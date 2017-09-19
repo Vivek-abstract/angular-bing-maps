@@ -1,5 +1,5 @@
 var gulp = require('gulp');
-var karma = require('karma').server;
+//var karma = require('karma').server;
 var concat = require('gulp-concat');
 var uglify = require('gulp-uglify');
 var rename = require('gulp-rename');
@@ -56,7 +56,7 @@ gulp.task('build', function() {
  * Process
  */
 gulp.task('process-all', function (done) {
-  runSequence('jshint-src', 'test-src', 'build', done)
+  runSequence('jshint-src', 'build', done)
 });
 
 /**

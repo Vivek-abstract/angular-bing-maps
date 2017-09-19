@@ -3,7 +3,11 @@
 function angularBingMapsProvider() {
     'use strict';
 
-    var defaultMapOptions = {};
+    var defaultMapOptions = {
+        width: '100vw',
+        height: '100vh'
+    };
+    
     var centerBindEvent = 'viewchangeend';
 
     function setDefaultMapOptions(usersOptions) {

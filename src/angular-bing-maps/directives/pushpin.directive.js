@@ -19,6 +19,10 @@ function pushpinDirective() {
         scope.$watch('lat', updatePosition);
         scope.$watch('lng', updatePosition);
         scope.$watch('options', function (newOptions) {
+            if (newOptions === undefined) {
+                return;
+            }
+            
             scope.pin.setOptions(newOptions);
         });
         scope.$watch('pushpinData', function (newPushpinData) {
@@ -67,7 +71,7 @@ function pushpinDirective() {
     return {
         link: link,
         controller: ['$scope', function ($scope) {
-            this.pin = new Microsoft.Maps.Pushpin();
+            this.pin = new Microsoft.Maps.Pushpin(new Microsoft.Maps.Location(0.0, 0.0));
             $scope.pin = this.pin;
         }],
         template: '<div ng-transclude></div>',

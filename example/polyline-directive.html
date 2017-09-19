@@ -1,12 +1,16 @@
 <!DOCTYPE HTML>
 <html>
     <head>
-        <script charset="UTF-8" type="text/javascript" src="http://ecn.dev.virtualearth.net/mapcontrol/mapcontrol.ashx?v=7.0"></script>
+        <script charset="UTF-8" type="text/javascript" src="//www.bing.com/api/maps/mapcontrol?callback=initApp" async defer></script>
         <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.3.12/angular.min.js"></script>
 
         <script src="../dist/angular-bing-maps.js"></script>
 
         <script type="text/javascript">
+            function initApp() {
+                angular.bootstrap(document.getElementById('angularBingMapExample'), ['angularBingMapExample']);
+            }
+
             var app = angular.module('angularBingMapExample', ['angularBingMaps']);
             app.controller('ExampleController', ['$scope', '$http', function($scope, $http) {
 
@@ -30,7 +34,7 @@
         </style>
 
     </head>
-    <body ng-app="angularBingMapExample" ng-strict-di>
+    <body id="angularBingMapExample" ng-strict-di>
 
         <div class="bing-map-container" ng-controller="ExampleController">
             <bing-map

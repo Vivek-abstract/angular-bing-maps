@@ -11,7 +11,7 @@ Angular Bing Maps is a project that Credera developed as part of a client engage
   2. Include /dist/angular-bing-maps.min.js in your HTML source
     * `<script type="text/javascript" src="bower_components/angular-bing-maps/dist/angular-bing-maps.min.js"></script>`
   3. Include Bing Maps' Javascript file in your HTML source
-    * `<script charset="UTF-8" type="text/javascript" src="http://ecn.dev.virtualearth.net/mapcontrol/mapcontrol.ashx?v=7.0"></script>`
+    * `<script charset="UTF-8" type="text/javascript" src="//www.bing.com/api/maps/mapcontrol"></script>`
   4. Include 'angularBingMaps' module in your angular app dependencies
     * `var myApp = angular.module('yourAppName', ['angularBingMaps']);`
   5. Add your parent `<bing-map></bing-map>` directive into your HTML with your Bing Maps API credentials

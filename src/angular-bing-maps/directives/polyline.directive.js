@@ -23,6 +23,10 @@ function polylineDirective(MapUtils) {
         }
 
         scope.$watch('options', function (newOptions) {
+            if (newOptions === undefined) {
+                return;
+            }
+
             polyline.setOptions(newOptions);
         }, true);
         scope.$watch('locations', function() {

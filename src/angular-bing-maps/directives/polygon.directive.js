@@ -27,6 +27,10 @@ function polygonDirective(MapUtils) {
         }
 
         scope.$watch('options', function (newOptions) {
+            if (newOptions === undefined) {
+                return;
+            }
+            
             polygon.setOptions(newOptions);
         }, true);
         scope.$watch('locations', function() {

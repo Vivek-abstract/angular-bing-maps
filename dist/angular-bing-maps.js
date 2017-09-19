@@ -4,7 +4,6 @@ drawingToolsDirective.$inject = ['MapUtils'];
 bingMapDirective.$inject = ['angularBingMaps'];
 polygonDirective.$inject = ['MapUtils'];
 polylineDirective.$inject = ['MapUtils'];
-venueMapDirective.$inject = ['$timeout'];
 wktDirective.$inject = ['MapUtils'];
 mapUtilsService.$inject = ['$q'];(function () {
 
@@ -33,49 +32,6 @@ mapUtilsService.$inject = ['$q'];(function () {
       ]);
 
 })();
-
-/*global angular, Microsoft */
-
-function angularBingMapsProvider() {
-    'use strict';
-
-    var defaultMapOptions = {};
-    var centerBindEvent = 'viewchangeend';
-
-    function setDefaultMapOptions(usersOptions) {
-        defaultMapOptions = usersOptions;
-    }
-
-    function getDefaultMapOptions() {
-        return defaultMapOptions;
-    }
-
-    function bindCenterRealtime(_bindCenterRealtime) {
-        if(_bindCenterRealtime) {
-            centerBindEvent = 'viewchange';
-        } else {
-            centerBindEvent = 'viewchangeend';
-        }
-    }
-
-    function getCenterBindEvent() {
-        return centerBindEvent;
-    }
-
-    return {
-        setDefaultMapOptions: setDefaultMapOptions,
-        bindCenterRealtime: bindCenterRealtime,
-        $get: function() {
-            return {
-                getDefaultMapOptions: getDefaultMapOptions,
-                getCenterBindEvent: getCenterBindEvent
-            };
-        }
-    };
-
-}
-
-angular.module('angularBingMaps.providers').provider('angularBingMaps', angularBingMapsProvider);
 
 /*global angular, Microsoft, DrawingTools, console*/
 
@@ -206,30 +162,39 @@ function infoBoxDirective() {
     'use strict';
 
     function link(scope, element, attrs, ctrls) {
-        //Need to initialize this with a Location to prevent errors adding it to the map
-        var infobox = new Microsoft.Maps.Infobox(new Microsoft.Maps.Location(0,0)),
-            pushpinCtrl = ctrls[1];
+        // //Need to initialize this with a Location to prevent errors adding it to the map
+        // var infobox = new Microsoft.Maps.Infobox(new Microsoft.Maps.Location(0,0)),
+        
+        var provider = ctrls[0];
+        var pushpinCtrl = ctrls[1];
+        var infobox = new Microsoft.Maps.Infobox(new Microsoft.Maps.Location(0.0 , 0.0));
+
+        infobox.setMap(provider.map);
 
         function updateLocation() {
             infobox.setLocation(new Microsoft.Maps.Location(scope.lat, scope.lng));
         }
+
         function updateOptions() {
             if (!scope.options) {
                 scope.options = {};
             }
+
             if (scope.title) {
                 scope.options.title = scope.title;
             }
+
             if (scope.description) {
                 scope.options.description = scope.description;
             }
+
             if (scope.hasOwnProperty('visible')) {
                 scope.options.visible = scope.visible;
             } else {
                 scope.options.visible = true;
             }
 
-            //TODO: Define a default offset for the default infobox to prevent overlapping default marker??? Maybe....
+            // TODO: Define a default offset for the default infobox to prevent overlapping default marker??? Maybe....
 
             infobox.setOptions(scope.options);
         }
@@ -238,7 +203,7 @@ function infoBoxDirective() {
            infobox.setLocation(location);
         });
 
-        //This was not the child of a pushpin, so use the lat & lng
+        // This was not the child of a pushpin, so use the lat & lng
         if (!pushpinCtrl) {
             scope.$watch('lat', updateLocation);
             scope.$watch('lng', updateLocation);
@@ -249,19 +214,11 @@ function infoBoxDirective() {
         scope.$watch('description', updateOptions);
         scope.$watch('visible', updateOptions);
 
-        ctrls[0].map.entities.push(infobox);
-
-        /*Need a way to set visible = false when close button clicked. This is not working*/
-//        Microsoft.Maps.Events.addHandler(infobox, 'entitychanged', function(event) {
-//            scope.visible = event.entity.getVisible();
-//            scope.$apply();
-//        });
-
         scope.$on('$destroy', unregisterEventListeners);
         element.on('$destroy', unregisterEventListeners);
 
         function unregisterEventListeners() {
-            ctrls[0].map.entities.remove(infobox);
+            infobox.setMap(null);
         }
     }
 
@@ -289,7 +246,7 @@ function bingMapDirective(angularBingMaps) {
     'use strict';
 
     return {
-        template: '<div ng-transclude></div>',
+        template: '<section><div ng-transclude></div></section>',
         restrict: 'EA',
         transclude: true,
         scope: {
@@ -319,26 +276,16 @@ function bingMapDirective(angularBingMaps) {
                 mapOptions = {credentials: $scope.credentials};
             }
 
-            this.map = new Microsoft.Maps.Map($element[0], mapOptions);
+            var $container = $element[0];
+            var $section = $container.querySelector('section');
+
+            $section.style.width = mapOptions.width;
+            $section.style.height = mapOptions.height;
+
+            this.map = new Microsoft.Maps.Map($section, mapOptions);
 
             var eventHandlers = {};
             $scope.map = this.map;
-
-            /*
-                Since Bing Maps fires view change events as soon as the map loads, we have to wait until after the
-                initial viewchange event has completed before we bind to $scope.center. Otherwise the user's
-                $scope.center will always be set to {0, 0} when the map loads
-            */
-            var initialViewChangeHandler = Microsoft.Maps.Events.addHandler($scope.map, 'viewchangeend', function() {
-                Microsoft.Maps.Events.removeHandler(initialViewChangeHandler);
-                //Once initial view change has ended, bind the user's specified handler to view change
-                var centerBindEvent = angularBingMaps.getCenterBindEvent();
-                Microsoft.Maps.Events.addHandler($scope.map, centerBindEvent, function(event) {
-                    $scope.center = $scope.map.getCenter();
-                    $scope.$apply();
-                });
-            });
-
 
             $scope.$watch('center', function (center) {
                 $scope.map.setView({animate: true, center: center});
@@ -353,7 +300,9 @@ function bingMapDirective(angularBingMaps) {
             });
 
             $scope.$watch('options', function(options) {
-                $scope.map.setOptions(options);
+                if (options !== undefined) {
+                    $scope.map.setOptions(options);
+                }
             });
 
             $scope.$watch('events', function (events) {
@@ -411,6 +360,10 @@ function polygonDirective(MapUtils) {
         }
 
         scope.$watch('options', function (newOptions) {
+            if (newOptions === undefined) {
+                return;
+            }
+            
             polygon.setOptions(newOptions);
         }, true);
         scope.$watch('locations', function() {
@@ -486,6 +439,10 @@ function polylineDirective(MapUtils) {
         }
 
         scope.$watch('options', function (newOptions) {
+            if (newOptions === undefined) {
+                return;
+            }
+
             polyline.setOptions(newOptions);
         }, true);
         scope.$watch('locations', function() {
@@ -534,6 +491,10 @@ function pushpinDirective() {
         scope.$watch('lat', updatePosition);
         scope.$watch('lng', updatePosition);
         scope.$watch('options', function (newOptions) {
+            if (newOptions === undefined) {
+                return;
+            }
+            
             scope.pin.setOptions(newOptions);
         });
         scope.$watch('pushpinData', function (newPushpinData) {
@@ -582,7 +543,7 @@ function pushpinDirective() {
     return {
         link: link,
         controller: ['$scope', function ($scope) {
-            this.pin = new Microsoft.Maps.Pushpin();
+            this.pin = new Microsoft.Maps.Pushpin(new Microsoft.Maps.Location(0.0, 0.0));
             $scope.pin = this.pin;
         }],
         template: '<div ng-transclude></div>',
@@ -656,115 +617,6 @@ function tileLayerDirective() {
 }
 
 angular.module('angularBingMaps.directives').directive('tileLayer', tileLayerDirective);
-
-/*global angular, Microsoft*/
-
-function venueMapDirective($timeout) {
-    'use strict';
-
-    return {
-        template: '<div class="directory"></div><div class="map"></div>',
-        restrict: 'EA',
-        transclude: true,
-        scope: {
-            credentials: '=',
-            center: '=?',
-            zoom: '=?',
-            mapType: '=?',
-            venue: '=?',
-            room: '=?',
-        },
-        controller: ['$scope', '$element', function ($scope, $element) {
-            // Controllers get instantiated before link function is run, so instantiate the map in the Controller
-            // so that it is available to child link functions
-            this.map = new Microsoft.Maps.Map($element.children()[1], { credentials: $scope.credentials });
-            $scope.map = this.map;
-
-            $scope.$watch('center', function (center) {
-                $scope.map.setView({ animate: true, center: center });
-            });
-
-            $scope.$watch('zoom', function (zoom) {
-                $scope.map.setView({ animate: true, zoom: zoom });
-            });
-
-            $scope.$watch('mapType', function (mapTypeId) {
-                $scope.map.setView({ animate: true, mapTypeId: mapTypeId });
-            });
-
-
-            var venue;
-
-            function findRoom(roomName) {
-                var match = roomName.toUpperCase();
-                for (var i = 0; i < venue.floors.length; i++) {
-                    for (var j = 0; j < venue.floors[i].primitives.length; j++) {
-                        var primitive = venue.floors[i].primitives[j];
-                        var itemName = primitive.name.toUpperCase();
-                        if (match === itemName) {
-                            return primitive;
-                        }
-                    }
-                }
-                return null;
-            }
-
-            function addDirectory() {
-                if (venue && venue.directory && venue.directory.isInDOM()) {
-                    // Using the $timeout object here to add a zero length wait to ensure
-                    // the directory is added to the DOM this ensures that the directory
-                    // links are in the DOM to be clicked
-                    $timeout(function() {
-                        if (typeof($scope.room) !== 'undefined' && $scope.room !== null) {
-                            var room = findRoom($scope.room);
-                            if (typeof(room) !== 'undefined' && room !== null) {
-                                //grab the anchor tag in the directory and click it
-                                var selector = document.getElementById(room.id)
-                                                        .getElementsByTagName('a')[0];
-
-                                if(typeof(selector) !== 'undefined' && selector !== null) {
-                                    selector.click();
-                                }
-
-                                $scope.map.setView({ animate: true, zoom: 17});
-                                return;
-                            }
-                        }
-                    });
-                }
-            }
-
-            function venueMapLoaded(result) {
-                $timeout(function() {
-                    venue = result;
-
-                    if(!venue.directory.isInDOM()) {
-                        venue.directory.createUIElements();
-                    }
-
-                    venue.directory.addToDOM($element.children()[0],
-                                            Microsoft.Maps.VenueMaps.DirectorySortOrder.byFloor,
-                                            Microsoft.Maps.VenueMaps.DirectoryGrouping.none);
-                    venue.directory.setHeight(1.0);
-
-                    $scope.map.setView(venue.bestMapView, true);
-                    venue.show();
-
-                    addDirectory();
-                });
-            }
-
-            function venueMapModuleReady() {
-                var vmaps = new Microsoft.Maps.VenueMaps.VenueMapFactory($scope.map);
-                vmaps.create({ venueMapId: $scope.venue, success: venueMapLoaded });
-            }
-
-            Microsoft.Maps.loadModule('Microsoft.Maps.VenueMaps', { callback: venueMapModuleReady });
-        }]
-    };
-}
-
-angular.module('angularBingMaps.directives').directive('venueMap', venueMapDirective);
 
 /*global angular, Microsoft, DrawingTools, console, WKTModule*/
 
@@ -883,6 +735,53 @@ function wktDirective(MapUtils) {
 }
 
 angular.module('angularBingMaps.directives').directive('wkt', wktDirective);
+
+/*global angular, Microsoft */
+
+function angularBingMapsProvider() {
+    'use strict';
+
+    var defaultMapOptions = {
+        width: '100vw',
+        height: '100vh'
+    };
+    
+    var centerBindEvent = 'viewchangeend';
+
+    function setDefaultMapOptions(usersOptions) {
+        defaultMapOptions = usersOptions;
+    }
+
+    function getDefaultMapOptions() {
+        return defaultMapOptions;
+    }
+
+    function bindCenterRealtime(_bindCenterRealtime) {
+        if(_bindCenterRealtime) {
+            centerBindEvent = 'viewchange';
+        } else {
+            centerBindEvent = 'viewchangeend';
+        }
+    }
+
+    function getCenterBindEvent() {
+        return centerBindEvent;
+    }
+
+    return {
+        setDefaultMapOptions: setDefaultMapOptions,
+        bindCenterRealtime: bindCenterRealtime,
+        $get: function() {
+            return {
+                getDefaultMapOptions: getDefaultMapOptions,
+                getCenterBindEvent: getCenterBindEvent
+            };
+        }
+    };
+
+}
+
+angular.module('angularBingMaps.providers').provider('angularBingMaps', angularBingMapsProvider);
 
 /*global angular, Microsoft, DrawingTools, console*/
 

@@ -30,7 +30,7 @@
 *     <title>Drawing Tools Sample</title>
 *
 *     <!-- Bing Map Control references -->
-*     <script type="text/javascript" src="http://ecn.dev.virtualearth.net/mapcontrol/mapcontrol.ashx?v=7.0"></script>
+*     <script type="text/javascript" src="//www.bing.com/api/maps/mapcontrol"></script>
 *
 *     <!-- Our Bing Maps JavaScript Code -->
 *     <link href="js/DrawingToolsModule/DrawingToolsModule.css" rel="stylesheet" type="text/css" />

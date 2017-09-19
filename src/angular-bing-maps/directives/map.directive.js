@@ -4,7 +4,7 @@ function bingMapDirective(angularBingMaps) {
     'use strict';
 
     return {
-        template: '<div ng-transclude></div>',
+        template: '<section><div ng-transclude></div></section>',
         restrict: 'EA',
         transclude: true,
         scope: {
@@ -34,26 +34,16 @@ function bingMapDirective(angularBingMaps) {
                 mapOptions = {credentials: $scope.credentials};
             }
 
-            this.map = new Microsoft.Maps.Map($element[0], mapOptions);
+            var $container = $element[0];
+            var $section = $container.querySelector('section');
+
+            $section.style.width = mapOptions.width;
+            $section.style.height = mapOptions.height;
+
+            this.map = new Microsoft.Maps.Map($section, mapOptions);
 
             var eventHandlers = {};
             $scope.map = this.map;
-
-            /*
-                Since Bing Maps fires view change events as soon as the map loads, we have to wait until after the
-                initial viewchange event has completed before we bind to $scope.center. Otherwise the user's
-                $scope.center will always be set to {0, 0} when the map loads
-            */
-            var initialViewChangeHandler = Microsoft.Maps.Events.addHandler($scope.map, 'viewchangeend', function() {
-                Microsoft.Maps.Events.removeHandler(initialViewChangeHandler);
-                //Once initial view change has ended, bind the user's specified handler to view change
-                var centerBindEvent = angularBingMaps.getCenterBindEvent();
-                Microsoft.Maps.Events.addHandler($scope.map, centerBindEvent, function(event) {
-                    $scope.center = $scope.map.getCenter();
-                    $scope.$apply();
-                });
-            });
-
 
             $scope.$watch('center', function (center) {
                 $scope.map.setView({animate: true, center: center});
@@ -68,7 +58,9 @@ function bingMapDirective(angularBingMaps) {
             });
 
             $scope.$watch('options', function(options) {
-                $scope.map.setOptions(options);
+                if (options !== undefined) {
+                    $scope.map.setOptions(options);
+                }
             });
 
             $scope.$watch('events', function (events) {
