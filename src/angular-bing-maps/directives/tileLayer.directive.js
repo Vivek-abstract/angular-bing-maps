@@ -7,9 +7,11 @@ function tileLayerDirective() {
         var tileSource, tileLayer;
 
         function createTileSource() {
-            tileSource = new Microsoft.Maps.TileSource({
-                uriConstructor: scope.source
-            });
+            if (!tileSource) {
+                tileSource = new Microsoft.Maps.TileSource({
+                    uriConstructor: scope.source
+                });
+            }
 
             if (scope.options) {
                 angular.extend(scope.options, {
@@ -25,14 +27,28 @@ function tileLayerDirective() {
                 tileLayer.setOptions(scope.options);
             } else {
                 tileLayer = new Microsoft.Maps.TileLayer(scope.options);
-                mapCtrl.map.entities.push(tileLayer);
+                mapCtrl.map.layers.insert(tileLayer);
             }
         }
 
-        scope.$watch('options', createTileSource, true);
-        scope.$watch('source', createTileSource);
+        scope.$watch(function(scope) {
+            var options = scope.options;
+            return {
+                downloadTimeout: options.downloadTimeout,
+                opacity: options.opacity,
+                visible: options.visible,
+                zIndex: options.zIndex
+            };
+        }, function() {
+            createTileSource();
+        }, true);
+
+        scope.$watch('source', function() {
+            createTileSource();
+        });
+
         scope.$on('$destroy', function() {
-            mapCtrl.map.entities.remove(tileLayer);
+            mapCtrl.map.layers.remove(tileLayer);
         });
     }
 
