@@ -4,31 +4,25 @@ function wktDirective(MapUtils) {
     'use strict';
 
     function link(scope, element, attrs, mapCtrl) {
-        if (typeof WKTModule === 'undefined') {
-            console.log('You did not include WKTModule.js. Please include this script and try again');
-            return;
-        }
+        Microsoft.Maps.loadModule(['Microsoft.Maps.WellKnownText', 'Microsoft.Maps.AdvancedShapes'], function () {
+            init();
+        });
 
+        var map;
+        var drawingLayer;
         var entity = null;
         var eventHandlers = [];
 
-        MapUtils.loadAdvancedShapesModule().then(function() {
+        function init() {
+            map = mapCtrl.map;
+            drawingLayer = new Microsoft.Maps.Layer();
+            map.layers.insert(drawingLayer);
 
-            scope.$watch('text', function (shape) {
-                if(entity) {
-                    //Something is already on the map, remove that
-                    mapCtrl.map.entities.remove(entity);
-                }
-                if(shape && typeof shape === 'string') {
-                    //Raad it and add it to the mao
-                    entity = WKTModule.Read(shape, scope.styles);
-                    // It's unclear to me if we need to call MapUtils.flattenEntityCollection()
-                    // to ensure all subsequent loops through
-                    // entitycollections do not have nested entitycollections.
-                    // It works as-is with test data, so not flattening
-                    setOptions();
-                    mapCtrl.map.entities.push(entity);
-                }
+            processWkt(scope.text);
+
+            // Watchers
+            scope.$watch('text', function(shape) {
+                processWkt(shape);
             }, true);
 
             scope.$watch('events', function(events) {
@@ -47,9 +41,22 @@ function wktDirective(MapUtils) {
             });
 
             scope.$watch('fillColor', setOptions, true);
-
             scope.$watch('strokeColor', setOptions, true);
-        });
+        }
+
+        function processWkt(shape) {
+            if(entity) {
+                // Something is already on the map, remove that
+                drawingLayer.clear();
+            }
+
+            if(shape && typeof shape === 'string') {
+                // Read it and add it to the map
+                entity = Microsoft.Maps.WellKnownText.read(shape, scope.styles);
+                setOptions();
+                drawingLayer.add(entity);
+            }
+        }
 
         function setOptions() {
             //Entity not parsed yet
@@ -92,9 +99,8 @@ function wktDirective(MapUtils) {
             }
         }
 
-
         scope.$on('$destroy', function() {
-            mapCtrl.map.entities.remove(entity);
+            map.layers.remove(drawingLayer);
         });
     }
 
