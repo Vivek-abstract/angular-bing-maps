@@ -22,11 +22,13 @@ function bingMapDirective(angularBingMaps) {
 
             // Get default mapOptions the user set in config block
             var mapOptions = angularBingMaps.getDefaultMapOptions();
+
             // Add in any options they passed directly into the directive
             angular.extend(mapOptions, $scope.options);
-            if(mapOptions) {
+
+            if (mapOptions) {
                 //If the user didnt set credentials in config block, look for them on scope
-                if(!mapOptions.hasOwnProperty('credentials')) {
+                if (!mapOptions.hasOwnProperty('credentials')) {
                     mapOptions.credentials = $scope.credentials;
                 }
             } else {
@@ -70,10 +72,12 @@ function bingMapDirective(angularBingMaps) {
                     if (eventHandlers.hasOwnProperty(eventName)) {
                         Microsoft.Maps.Events.removeHandler(eventHandlers[eventName]);
                     }
+
                     var bingMapsHandler = Microsoft.Maps.Events.addHandler($scope.map, eventName, function (event) {
                         usersHandler(event);
                         $scope.$apply();
                     });
+
                     eventHandlers[eventName] = bingMapsHandler;
                 });
             });

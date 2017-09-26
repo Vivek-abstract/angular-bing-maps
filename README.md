@@ -8,10 +8,11 @@ Angular Bing Maps is a project that Credera developed as part of a client engage
   1. Obtain source code for angular-bing-maps
     * Via Bower `bower install angular-bing-maps --save`
     * Via git `git clone git@github.com:Credera/angular-bing-maps.git`
-  2. Include /dist/angular-bing-maps.min.js in your HTML source
+  2. Include Bing Maps' Javascript file in your HTML source
+    * `<script charset="UTF-8" type="text/javascript" src="//www.bing.com/api/maps/mapcontrol?callback=initApp" async defer></script>`
+    * IMPORTANT: Before using any of the directives in this project, you must wait for the Bing Maps library to finish loading. Use the `?callback=` parameter to determine when the Bing Maps API is ready to use.
+  3. Include /dist/angular-bing-maps.min.js in your HTML source
     * `<script type="text/javascript" src="bower_components/angular-bing-maps/dist/angular-bing-maps.min.js"></script>`
-  3. Include Bing Maps' Javascript file in your HTML source
-    * `<script charset="UTF-8" type="text/javascript" src="//www.bing.com/api/maps/mapcontrol"></script>`
   4. Include 'angularBingMaps' module in your angular app dependencies
     * `var myApp = angular.module('yourAppName', ['angularBingMaps']);`
   5. Add your parent `<bing-map></bing-map>` directive into your HTML with your Bing Maps API credentials
@@ -28,17 +29,13 @@ Proper documentation is in our road map, but currently not implemented. Please v
   * [`<abm-polygon>`](example/polygon-directive.html)
   * [`<polyline>`](example/polyline-directive.html)
   * [`<tile-layer>`](example/tile-layer-directive.html)
-  * [`<geo-json>`](example/geo-json-directive.html) :star:
-    * Using Earthware Ltd.'s Bing Maps GeoJSON Module from http://bingmapsv7modules.codeplex.com/wikipage?title=GeoJSON%20Module
-  * [`<wkt>`](wkt-directive.html) :star:[(Well-Known Text)](http://en.wikipedia.org/wiki/Well-known_text)
-    * Using Ricky Brundritt's Bing Maps WKT Read/Write Module http://bingmapsv7modules.codeplex.com/wikipage?title=Well%20Known%20Text%20Reader%2fWriter
-  * [`<drawing-tools>`](drawing-tools-directive.html):star:
-    * Using Ricky Brundritt's Bing Maps Drawing Tools Module https://bingmapsv7modules.codeplex.com/wikipage?title=Drawing%20Tools%20Module&version=1
-
-:star: - Third party modules must be manually included in addition to angular-bing-maps.js. Please use modules found inside this repository under /BingMapModules/{{moduleName}}
+  * [`<geo-json>`](example/geo-json-directive.html)
+  * [`<wkt>`](wkt-directive.html) [(Well-Known Text)](http://en.wikipedia.org/wiki/Well-known_text)
+  * [`<drawing-tools>`](drawing-tools-directive.html)
 
 ## Contributing
 Feel free to submit PR's for features, but please submit all PR's as candidates for the "develop" branch. Our "master" branch contains the latest stable release.
+
 ### Developer Setup
 To begin contributing to angular-bing-maps:
  1. Fork it

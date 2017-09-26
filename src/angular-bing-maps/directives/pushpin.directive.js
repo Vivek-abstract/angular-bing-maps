@@ -16,33 +16,40 @@ function pushpinDirective() {
 
         updatePosition();
         mapCtrl.map.entities.push(scope.pin);
+
         scope.$watch('lat', updatePosition);
         scope.$watch('lng', updatePosition);
+
         scope.$watch('options', function (newOptions) {
             if (newOptions === undefined) {
                 return;
             }
-            
+
             scope.pin.setOptions(newOptions);
         });
+
         scope.$watch('pushpinData', function (newPushpinData) {
             scope.pin.pushpinData = newPushpinData;
         });
+
         scope.$watch('events', function(events) {
-            //Loop through each event handler
+            // Loop through each event handler
             angular.forEach(events, function(usersHandler, eventName) {
-                //If we already created an event handler, remove it
-                if(eventHandlers.hasOwnProperty(eventName)) {
+                // If we already created an event handler, remove it
+                if (eventHandlers.hasOwnProperty(eventName)) {
                     Microsoft.Maps.Events.removeHandler(eventHandlers[eventName]);
                 }
+
                 var bingMapsHandler = Microsoft.Maps.Events.addHandler(scope.pin, eventName, function(event) {
-                    //As a convenience, add tracker id to target attribute for user to ID target of event
-                    if(typeof scope.trackBy !== 'undefined') {
+                    // As a convenience, add tracker id to target attribute for user to ID target of event
+                    if (typeof scope.trackBy !== 'undefined') {
                         event.target['trackBy'] = scope.trackBy;
                     }
+
                     usersHandler(event);
                     scope.$apply();
                 });
+
                 eventHandlers[eventName] = bingMapsHandler;
             });
         });
@@ -61,7 +68,8 @@ function pushpinDirective() {
 
         scope.$on('$destroy', function() {
             mapCtrl.map.entities.remove(scope.pin);
-            //Is this necessary? Doing it just to be safe
+
+            // Is this necessary? Doing it just to be safe
             angular.forEach(eventHandlers, function(handler, eventName) {
                 Microsoft.Maps.Events.removeHandler(handler);
             });

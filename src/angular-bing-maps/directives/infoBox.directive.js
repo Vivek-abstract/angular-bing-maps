@@ -4,9 +4,6 @@ function infoBoxDirective() {
     'use strict';
 
     function link(scope, element, attrs, ctrls) {
-        // //Need to initialize this with a Location to prevent errors adding it to the map
-        // var infobox = new Microsoft.Maps.Infobox(new Microsoft.Maps.Location(0,0)),
-        
         var provider = ctrls[0];
         var pushpinCtrl = ctrls[1];
         var infobox = new Microsoft.Maps.Infobox(new Microsoft.Maps.Location(0.0 , 0.0));
@@ -37,7 +34,6 @@ function infoBoxDirective() {
             }
 
             // TODO: Define a default offset for the default infobox to prevent overlapping default marker??? Maybe....
-
             infobox.setOptions(scope.options);
         }
 
