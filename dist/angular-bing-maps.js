@@ -68,14 +68,12 @@ function drawingToolsDirective(MapUtils) {
 
             setOptions();
 
-            Microsoft.Maps.Events.addHandler(map, 'dblclick', function() {
-                resetDrawingState();
-            });
-
             if (scope.onShapeChange) {
                 Microsoft.Maps.Events.addHandler(tools, 'drawingEnded', function(shapes) {
                     scope.onShapeChange({shapes: shapes});
                     scope.$apply();
+
+                    currentShape = null;
                 });
             }
 
@@ -85,7 +83,7 @@ function drawingToolsDirective(MapUtils) {
                 } else {
                     setDrawingMode(shape);
                 }
-            }, true);
+            });
 
             scope.$on('DRAWINGTOOLS.CLEAR', function() {
                 drawingLayer.clear();
@@ -132,6 +130,8 @@ function drawingToolsDirective(MapUtils) {
             }
         }
 
+
+        // TODO: Pushpin functionality not fully tested...
         function drawPushpin() {
             if (setMode('pushpin')) {
                 //Add a click event to the map to add pushpins.
@@ -139,11 +139,13 @@ function drawingToolsDirective(MapUtils) {
                     currentShape = new Microsoft.Maps.Pushpin(e.location, {
                         color: style.color
                     });
+
                     drawingLayer.add(currentShape);
                 }));
             }
         }
 
+        // TODO: Polyline functionality not fully tested...
         function drawPolyline() {
             if (setMode('polyline')) {
                 //Create a new polyline.
@@ -155,12 +157,27 @@ function drawingToolsDirective(MapUtils) {
         }
 
         function drawPolygon() {
-            if (setMode('polygon')){
-                //Create a new polygon.
-                tools.create(Microsoft.Maps.DrawingTools.ShapeType.polygon, function (s) {
-                    s.setOptions(style);
-                    currentShape = s;
-                });
+            if (setMode('polygon')) {
+                events.push(Microsoft.Maps.Events.addHandler(map, 'mousedown', function(e) {
+                    if (currentShape != null) {
+                        return;
+                    }
+
+                    // Disable zooming & lock map so it doesn't move when dragging
+                    map.setOptions({ disablePanning: true, disableZooming: true });
+
+                    // Create a new polygon
+                    tools.create(Microsoft.Maps.DrawingTools.ShapeType.polygon, function(s) {
+                        s.setOptions(style);
+                        currentShape = s;
+                    });
+                }));
+
+                events.push(Microsoft.Maps.Events.addHandler(map, 'dblclick', function (e) {
+                    // Unlock map panning & zooming
+                    setTimeout(function(){ map.setOptions({ disablePanning: false, disableZooming: false }); }, 1);
+                    resetDrawingState();
+                }));
             }
         }
 
@@ -168,14 +185,18 @@ function drawingToolsDirective(MapUtils) {
             if (setMode('circle')) {
                 var isMouseDown = false;
 
-                events.push(Microsoft.Maps.Events.addHandler(map, 'mousedown', function (e) {
-                    //Lock map so it doesn't move when dragging.
-                    map.setOptions({ disablePanning: true });
+                events.push(Microsoft.Maps.Events.addHandler(map, 'click', function(e) {
+                    if (currentShape != null) {
+                        return;
+                    }
 
-                    //Create a polygon for the circle.
+                    // Disable zooming & lock map so it doesn't move when dragging
+                    map.setOptions({ disablePanning: true, disableZooming: true });
+
+                    // Create a polygon for the circle
                     currentShape = new Microsoft.Maps.Polygon([e.location, e.location, e.location], style);
 
-                    //Store the center point in the polygons metadata.
+                    // Store the center point in the polygons metadata
                     currentShape.metadata = {
                         type: 'circle',
                         center: e.location
@@ -186,19 +207,21 @@ function drawingToolsDirective(MapUtils) {
                     isMouseDown = true;
                 }));
 
-                events.push(Microsoft.Maps.Events.addHandler(map, 'mousemove', function (e) {
+                events.push(Microsoft.Maps.Events.addHandler(map, 'mousemove', function(e) {
                     if (isMouseDown) {
                         scaleCircle(e);
                     }
                 }));
 
-                events.push(Microsoft.Maps.Events.addHandler(map, 'mouseup', function (e) {
+                events.push(Microsoft.Maps.Events.addHandler(map, 'dblclick', function(e) {
                     scaleCircle(e);
 
-                    //Unlock map panning.
-                    map.setOptions({ disablePanning: false });
+                    // Unlock map panning & zooming
+                    setTimeout(function() { map.setOptions({ disablePanning: false, disableZooming: false }); }, 1);
 
                     isMouseDown = false;
+
+                    Microsoft.Maps.Events.invoke(tools, 'drawingEnded', currentShape);
                 }));
             }
         }
@@ -274,9 +297,13 @@ function drawingToolsDirective(MapUtils) {
             if (setMode('rectangle')) {
                 var isMouseDown = false;
 
-                events.push(Microsoft.Maps.Events.addHandler(map, 'mousedown', function (e) {
-                    //Lock map so it doesn't move when dragging.
-                    map.setOptions({ disablePanning: true });
+                events.push(Microsoft.Maps.Events.addHandler(map, 'click', function(e) {
+                    if (currentShape != null) {
+                        return;
+                    }
+
+                    // Disable zooming & lock map so it doesn't move when dragging
+                    map.setOptions({ disablePanning: true, disableZooming: true });
 
                     //Create a polygon for the circle.
                     currentShape = new Microsoft.Maps.Polygon([e.location, e.location, e.location], style);
@@ -291,19 +318,21 @@ function drawingToolsDirective(MapUtils) {
                     isMouseDown = true;
                 }));
 
-                events.push(Microsoft.Maps.Events.addHandler(map, 'mousemove', function (e) {
+                events.push(Microsoft.Maps.Events.addHandler(map, 'mousemove', function(e) {
                     if (isMouseDown) {
                         updateRectangle(e);
                     }
                 }));
 
-                events.push(Microsoft.Maps.Events.addHandler(map, 'mouseup', function (e) {
+                events.push(Microsoft.Maps.Events.addHandler(map, 'dblclick', function(e) {
                     updateRectangle(e);
 
-                    //Unlock map panning.
-                    map.setOptions({ disablePanning: false });
+                    // Unlock map panning & zooming
+                    setTimeout(function() { map.setOptions({ disablePanning: false, disableZooming: false }); }, 1);
 
                     isMouseDown = false;
+
+                    Microsoft.Maps.Events.invoke(tools, 'drawingEnded', currentShape);
                 }));
             }
         }
@@ -377,6 +406,7 @@ function drawingToolsDirective(MapUtils) {
             }
         }
 
+        // TODO: Edit functionality not fully tested...
         function edit() {
             if (setMode('edit')) {
                 //Enable pushpin dragging in layer.
@@ -406,6 +436,7 @@ function drawingToolsDirective(MapUtils) {
             }
         }
 
+        // TODO: Erase functionality not fully tested...
         function erase() {
             if (setMode('erase')) {
                 events.push(Microsoft.Maps.Events.addHandler(drawingLayer, 'mousedown', function (e) {
@@ -414,23 +445,23 @@ function drawingToolsDirective(MapUtils) {
             }
         }
 
-        //Sets the drawing mode, or toggles out of a mode if it is already set.
-        //Returns true if the specified mode is new.
+        // Sets the drawing mode, or toggles out of a mode if it is already set.
+        // Returns true if the specified mode is new
         function setMode(mode) {
-            //Remove all attached events.
-            for(var i=0; i < events.length;i++){
+            // Remove all attached events
+            for (var i = 0; i < events.length; i++){
                 Microsoft.Maps.Events.removeHandler(events[i]);
             }
 
             events = [];
 
-            //Unlock map so incase it has been locked previously.
+            // Unlock map so incase it has been locked previously
             map.setOptions({ disablePanning: true });
 
             var state = false;
 
             if (currentMode === mode || mode === null) {
-                //Toggle out of currentMode mode.
+                // Toggle out of currentMode mode
                 currentMode = null;
             } else {
                 currentMode = mode;
@@ -443,16 +474,17 @@ function drawingToolsDirective(MapUtils) {
         }
 
         function resetDrawingState() {
-            //Stop any current drawing.
+            // Stop any current drawing
             if (currentShape) {
                 tools.finish(function (s) {
-                    //Add the completed shape to the drawning to the drawing layer.
+                    // Add the completed shape to the drawning to the drawing layer
                     drawingLayer.add(s);
                 });
+
                 currentShape = null;
             }
 
-            if(currentMode !== 'edit') {
+            if (currentMode !== 'edit') {
                 //Disable pushpin dragging in layer.
                 setPushpinDraggability(false);
             }
