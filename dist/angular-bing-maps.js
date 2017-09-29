@@ -1156,6 +1156,7 @@ function wktDirective(MapUtils) {
                 map.layers.insert(drawingLayer);
 
                 processWkt(scope.text);
+                initHandlers(scope.events);
 
                 // Watchers
                 scope.$watch('text', function(shape) {
@@ -1163,18 +1164,7 @@ function wktDirective(MapUtils) {
                 }, true);
 
                 scope.$watch('events', function(events) {
-                    removeAllHandlers();
-                    //Loop through each event handler
-                    angular.forEach(events, function(usersHandler, eventName) {
-                        if (entity instanceof Microsoft.Maps.EntityCollection) {
-                            //Add the handler to all entities in collection
-                            for (var i = 0; i < entity.getLength(); i++) {
-                                addHandler(entity.get(i), eventName, usersHandler);
-                            }
-                        } else {
-                            addHandler(entity, eventName, usersHandler);
-                        }
-                    });
+                    initHandlers(events);
                 });
 
                 scope.$watch('fillColor', setOptions, true);
@@ -1219,6 +1209,21 @@ function wktDirective(MapUtils) {
                 }
             }
 
+            function initHandlers(handlers) {
+                removeAllHandlers();
+                //Loop through each event handler
+                angular.forEach(handlers, function(usersHandler, eventName) {
+                    if (entity instanceof Microsoft.Maps.EntityCollection) {
+                        //Add the handler to all entities in collection
+                        for (var i = 0; i < entity.getLength(); i++) {
+                            addHandler(entity.get(i), eventName, usersHandler);
+                        }
+                    } else {
+                        addHandler(entity, eventName, usersHandler);
+                    }
+                });
+            }
+
             function addHandler(target, eventName, userHandler) {
                 var handler = Microsoft.Maps.Events.addHandler(target, eventName, function(event) {
                     if (typeof scope.trackBy !== 'undefined') {
@@ -1243,7 +1248,7 @@ function wktDirective(MapUtils) {
             scope.$on('$destroy', function() {
                 map.layers.remove(drawingLayer);
             });
-            
+
         });
     }
 
@@ -1264,6 +1269,53 @@ function wktDirective(MapUtils) {
 }
 
 angular.module('angularBingMaps.directives').directive('wkt', wktDirective);
+
+/*global angular, Microsoft */
+
+function angularBingMapsProvider() {
+    'use strict';
+
+    var defaultMapOptions = {
+        width: '100vw',
+        height: '100vh'
+    };
+    
+    var centerBindEvent = 'viewchangeend';
+
+    function setDefaultMapOptions(usersOptions) {
+        defaultMapOptions = usersOptions;
+    }
+
+    function getDefaultMapOptions() {
+        return defaultMapOptions;
+    }
+
+    function bindCenterRealtime(_bindCenterRealtime) {
+        if(_bindCenterRealtime) {
+            centerBindEvent = 'viewchange';
+        } else {
+            centerBindEvent = 'viewchangeend';
+        }
+    }
+
+    function getCenterBindEvent() {
+        return centerBindEvent;
+    }
+
+    return {
+        setDefaultMapOptions: setDefaultMapOptions,
+        bindCenterRealtime: bindCenterRealtime,
+        $get: function() {
+            return {
+                getDefaultMapOptions: getDefaultMapOptions,
+                getCenterBindEvent: getCenterBindEvent
+            };
+        }
+    };
+
+}
+
+angular.module('angularBingMaps.providers').provider('angularBingMaps', angularBingMapsProvider);
 
 /*global angular, Microsoft, DrawingTools, console*/
 
@@ -1354,53 +1406,6 @@ function mapUtilsService($q) {
 }
 
 angular.module('angularBingMaps.services').service('MapUtils', mapUtilsService);
-
-/*global angular, Microsoft */
-
-function angularBingMapsProvider() {
-    'use strict';
-
-    var defaultMapOptions = {
-        width: '100vw',
-        height: '100vh'
-    };
-    
-    var centerBindEvent = 'viewchangeend';
-
-    function setDefaultMapOptions(usersOptions) {
-        defaultMapOptions = usersOptions;
-    }
-
-    function getDefaultMapOptions() {
-        return defaultMapOptions;
-    }
-
-    function bindCenterRealtime(_bindCenterRealtime) {
-        if(_bindCenterRealtime) {
-            centerBindEvent = 'viewchange';
-        } else {
-            centerBindEvent = 'viewchangeend';
-        }
-    }
-
-    function getCenterBindEvent() {
-        return centerBindEvent;
-    }
-
-    return {
-        setDefaultMapOptions: setDefaultMapOptions,
-        bindCenterRealtime: bindCenterRealtime,
-        $get: function() {
-            return {
-                getDefaultMapOptions: getDefaultMapOptions,
-                getCenterBindEvent: getCenterBindEvent
-            };
-        }
-    };
-
-}
-
-angular.module('angularBingMaps.providers').provider('angularBingMaps', angularBingMapsProvider);
 
 },{"color":6}],2:[function(require,module,exports){
 /* MIT license */
