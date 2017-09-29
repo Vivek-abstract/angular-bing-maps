@@ -4,52 +4,58 @@ function tileLayerDirective() {
     'use strict';
 
     function link(scope, element, attrs, mapCtrl) {
-        var tileSource, tileLayer;
 
-        function createTileSource() {
-            if (!tileSource) {
-                tileSource = new Microsoft.Maps.TileSource({
-                    uriConstructor: scope.source
-                });
+        scope.$on('abm-v8-ready', function() {
+            var tileSource, tileLayer;
+
+            function createTileSource() {
+                if (!tileSource) {
+                    tileSource = new Microsoft.Maps.TileSource({
+                        uriConstructor: scope.source
+                    });
+                }
+
+                if (scope.options) {
+                    angular.extend(scope.options, {
+                        mercator: tileSource
+                    });
+                } else {
+                    scope.options = {
+                        mercator: tileSource
+                    };
+                }
+
+                if (tileLayer) {
+                    tileLayer.setOptions(scope.options);
+                } else {
+                    tileLayer = new Microsoft.Maps.TileLayer(scope.options);
+                    mapCtrl.map.layers.insert(tileLayer);
+                }
             }
 
-            if (scope.options) {
-                angular.extend(scope.options, {
-                    mercator: tileSource
-                });
-            } else {
-                scope.options = {
-                    mercator: tileSource
+            scope.$watch(function(scope) {
+                var options = scope.options;
+                return {
+                    downloadTimeout: options.downloadTimeout,
+                    opacity: options.opacity,
+                    visible: options.visible,
+                    zIndex: options.zIndex
                 };
-            }
+            }, function() {
+                createTileSource();
+            }, true);
 
-            if (tileLayer) {
-                tileLayer.setOptions(scope.options);
-            } else {
-                tileLayer = new Microsoft.Maps.TileLayer(scope.options);
-                mapCtrl.map.layers.insert(tileLayer);
-            }
-        }
+            scope.$watch('source', function() {
+                createTileSource();
+            });
 
-        scope.$watch(function(scope) {
-            var options = scope.options;
-            return {
-                downloadTimeout: options.downloadTimeout,
-                opacity: options.opacity,
-                visible: options.visible,
-                zIndex: options.zIndex
-            };
-        }, function() {
-            createTileSource();
-        }, true);
+            scope.$on('$destroy', function() {
+                mapCtrl.map.layers.remove(tileLayer);
+            });
 
-        scope.$watch('source', function() {
-            createTileSource();
         });
 
-        scope.$on('$destroy', function() {
-            mapCtrl.map.layers.remove(tileLayer);
-        });
+
     }
 
     return {

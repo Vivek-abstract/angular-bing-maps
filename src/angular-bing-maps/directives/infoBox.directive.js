@@ -4,60 +4,67 @@ function infoBoxDirective() {
     'use strict';
 
     function link(scope, element, attrs, ctrls) {
-        var provider = ctrls[0];
-        var pushpinCtrl = ctrls[1];
-        var infobox = new Microsoft.Maps.Infobox(new Microsoft.Maps.Location(0.0 , 0.0));
+        scope.$on('abm-v8-ready', function() {
 
-        infobox.setMap(provider.map);
+            var provider = ctrls[0];
+            var pushpinCtrl = ctrls[1];
+            var infobox = new Microsoft.Maps.Infobox(new Microsoft.Maps.Location(0.0 , 0.0));
 
-        function updateLocation() {
-            infobox.setLocation(new Microsoft.Maps.Location(scope.lat, scope.lng));
-        }
+            infobox.setMap(provider.map);
 
-        function updateOptions() {
-            if (!scope.options) {
-                scope.options = {};
+            function updateLocation() {
+                infobox.setLocation(new Microsoft.Maps.Location(scope.lat, scope.lng));
             }
 
-            if (scope.title) {
-                scope.options.title = scope.title;
+            function updateOptions() {
+                if (!scope.options) {
+                    scope.options = {};
+                }
+
+                if (scope.title) {
+                    scope.options.title = scope.title;
+                }
+
+                if (scope.description) {
+                    scope.options.description = scope.description;
+                }
+
+                if (scope.hasOwnProperty('visible')) {
+                    scope.options.visible = scope.visible;
+                } else {
+                    scope.options.visible = true;
+                }
+
+                infobox.setOptions(scope.options);
             }
 
-            if (scope.description) {
-                scope.options.description = scope.description;
-            }
+            scope.$on('positionUpdated', function(event, location) {
+                infobox.setLocation(location);
+            });
 
-            if (scope.hasOwnProperty('visible')) {
-                scope.options.visible = scope.visible;
+            // This was not the child of a pushpin, so use the lat & lng
+            if (!pushpinCtrl) {
+                scope.$watch('lat', updateLocation);
+                scope.$watch('lng', updateLocation);
             } else {
-                scope.options.visible = true;
+                infobox.setLocation(pushpinCtrl.pin.getLocation());
             }
 
-            // TODO: Define a default offset for the default infobox to prevent overlapping default marker??? Maybe....
-            infobox.setOptions(scope.options);
-        }
+            scope.$watch('options', updateOptions);
+            scope.$watch('title', updateOptions);
+            scope.$watch('description', updateOptions);
+            scope.$watch('visible', updateOptions);
 
-        scope.$on('positionUpdated', function(event, location) {
-           infobox.setLocation(location);
+            scope.$on('$destroy', unregisterEventListeners);
+            element.on('$destroy', unregisterEventListeners);
+
+            function unregisterEventListeners() {
+                infobox.setMap(null);
+            }
+
+            updateOptions();
+
         });
-
-        // This was not the child of a pushpin, so use the lat & lng
-        if (!pushpinCtrl) {
-            scope.$watch('lat', updateLocation);
-            scope.$watch('lng', updateLocation);
-        }
-
-        scope.$watch('options', updateOptions);
-        scope.$watch('title', updateOptions);
-        scope.$watch('description', updateOptions);
-        scope.$watch('visible', updateOptions);
-
-        scope.$on('$destroy', unregisterEventListeners);
-        element.on('$destroy', unregisterEventListeners);
-
-        function unregisterEventListeners() {
-            infobox.setMap(null);
-        }
     }
 
     return {

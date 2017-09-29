@@ -4,44 +4,48 @@ function polylineDirective(MapUtils) {
     'use strict';
 
     function link(scope, element, attrs, mapCtrl) {
-        var bingMapLocations = [];
+        scope.$on('abm-v8-ready', function() {
 
-        function generateBingMapLocations() {
-            bingMapLocations = MapUtils.convertToMicrosoftLatLngs(scope.locations);
-        }
+            var bingMapLocations = [];
 
-        generateBingMapLocations();
-
-        var polyline = new Microsoft.Maps.Polyline(bingMapLocations);
-        mapCtrl.map.entities.push(polyline);
-
-        function generateOptions() {
-            if (!scope.options) {
-                scope.options = {};
+            function generateBingMapLocations() {
+                bingMapLocations = MapUtils.convertToMicrosoftLatLngs(scope.locations);
             }
 
-            if (scope.strokeColor) {
-                scope.options.strokeColor = MapUtils.makeMicrosoftColor(scope.strokeColor);
-            }
-        }
-
-        scope.$watch('options', function (newOptions) {
-            if (newOptions === undefined) {
-                return;
-            }
-
-            polyline.setOptions(newOptions);
-        }, true);
-
-        scope.$watch('locations', function() {
             generateBingMapLocations();
-            polyline.setLocations(bingMapLocations);
-        });
 
-        scope.$watch('strokeColor', generateOptions);
+            var polyline = new Microsoft.Maps.Polyline(bingMapLocations);
+            mapCtrl.map.entities.push(polyline);
 
-        scope.$on('$destroy', function() {
-            mapCtrl.map.entities.remove(polyline);
+            function generateOptions() {
+                if (!scope.options) {
+                    scope.options = {};
+                }
+
+                if (scope.strokeColor) {
+                    scope.options.strokeColor = MapUtils.makeMicrosoftColor(scope.strokeColor);
+                }
+            }
+
+            scope.$watch('options', function (newOptions) {
+                if (newOptions === undefined) {
+                    return;
+                }
+
+                polyline.setOptions(newOptions);
+            }, true);
+
+            scope.$watch('locations', function() {
+                generateBingMapLocations();
+                polyline.setLocations(bingMapLocations);
+            });
+
+            scope.$watch('strokeColor', generateOptions);
+
+            scope.$on('$destroy', function() {
+                mapCtrl.map.entities.remove(polyline);
+            });
+
         });
     }
 

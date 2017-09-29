@@ -39,480 +39,484 @@ function drawingToolsDirective(MapUtils) {
     'use strict';
 
     function link(scope, element, attrs, mapCtrl) {
-        Microsoft.Maps.loadModule(['Microsoft.Maps.DrawingTools', 'Microsoft.Maps.SpatialMath'], function () {
-            init();
-        });
+        scope.$on('abm-v8-ready', function() {
 
-        var map;
-        var tools;
-        var drawingLayer;
-        var currentShape;
-        var currentMode;
-        var events = [];
+            Microsoft.Maps.loadModule(['Microsoft.Maps.DrawingTools', 'Microsoft.Maps.SpatialMath'], function () {
+                init();
+            });
 
-        var style = {
-            color: 'purple',
-            fillColor: 'rgba(0,255,0,0.5)',
-            strokeColor: 'blue',
-            strokeThickness: 3
-        };
+            var map;
+            var tools;
+            var drawingLayer;
+            var currentShape;
+            var currentMode;
+            var events = [];
 
-        function init() {
-            map = mapCtrl.map;
+            var style = {
+                color: 'purple',
+                fillColor: 'rgba(0,255,0,0.5)',
+                strokeColor: 'blue',
+                strokeThickness: 3
+            };
 
-            // Create a layer for the drawn shapes.
-            drawingLayer = new Microsoft.Maps.Layer();
-            map.layers.insert(drawingLayer);
+            function init() {
+                map = mapCtrl.map;
 
-            tools = new Microsoft.Maps.DrawingTools(map);
+                // Create a layer for the drawn shapes.
+                drawingLayer = new Microsoft.Maps.Layer();
+                map.layers.insert(drawingLayer);
 
-            setOptions();
+                tools = new Microsoft.Maps.DrawingTools(map);
 
-            if (scope.onShapeChange) {
-                Microsoft.Maps.Events.addHandler(tools, 'drawingEnded', function(shapes) {
-                    scope.onShapeChange({shapes: shapes});
-                    scope.$apply();
+                setOptions();
 
-                    currentShape = null;
+                if (scope.onShapeChange) {
+                    Microsoft.Maps.Events.addHandler(tools, 'drawingEnded', function(shapes) {
+                        scope.onShapeChange({shapes: shapes});
+                        scope.$apply();
+
+                        currentShape = null;
+                    });
+                }
+
+                scope.$watch('drawThisShape', function (shape) {
+                    if (shape === null || shape === 'none') {
+                        resetDrawingState();
+                    } else {
+                        setDrawingMode(shape);
+                    }
+                });
+
+                scope.$on('DRAWINGTOOLS.CLEAR', function() {
+                    drawingLayer.clear();
                 });
             }
 
-            scope.$watch('drawThisShape', function (shape) {
-                if (shape === null || shape === 'none') {
-                    resetDrawingState();
-                } else {
-                    setDrawingMode(shape);
+            function setOptions() {
+                if (scope.strokeColor) {
+                    style.strokeColor = MapUtils.makeMicrosoftColor(scope.strokeColor);
                 }
-            });
 
-            scope.$on('DRAWINGTOOLS.CLEAR', function() {
-                drawingLayer.clear();
-            });
-        }
-
-        function setOptions() {
-            if (scope.strokeColor) {
-                style.strokeColor = MapUtils.makeMicrosoftColor(scope.strokeColor);
+                if (scope.fillColor) {
+                    style.fillColor = MapUtils.makeMicrosoftColor(scope.fillColor);
+                }
             }
 
-            if (scope.fillColor) {
-                style.fillColor = MapUtils.makeMicrosoftColor(scope.fillColor);
-            }
-        }
-
-        // Most of the code below is based on:
-        // https://github.com/Microsoft/BingMapsV8CodeSamples/blob/master/Samples/Drawing%20Tools/Fully%20Custom%20Drawing%20Toolbar.html
-        function setDrawingMode(mode) {
-            switch (mode) {
-                case 'pushpin':
+            // Most of the code below is based on:
+            // https://github.com/Microsoft/BingMapsV8CodeSamples/blob/master/Samples/Drawing%20Tools/Fully%20Custom%20Drawing%20Toolbar.html
+            function setDrawingMode(mode) {
+                switch (mode) {
+                    case 'pushpin':
                     drawPushpin();
                     break;
-                case 'polyline':
+                    case 'polyline':
                     drawPolyline();
                     break;
-                case 'polygon':
+                    case 'polygon':
                     drawPolygon();
                     break;
-                case 'circle':
+                    case 'circle':
                     drawCircle();
                     break;
-                case 'rectangle':
+                    case 'rectangle':
                     drawRectangle();
                     break;
-                case 'edit':
+                    case 'edit':
                     edit();
                     break;
-                case 'erase':
+                    case 'erase':
                     erase();
                     break;
-                default:
+                    default:
                     break;
+                }
             }
-        }
 
 
-        // TODO: Pushpin functionality not fully tested...
-        function drawPushpin() {
-            if (setMode('pushpin')) {
-                //Add a click event to the map to add pushpins.
-                events.push(Microsoft.Maps.Events.addHandler(map, 'click', function (e) {
-                    currentShape = new Microsoft.Maps.Pushpin(e.location, {
-                        color: style.color
-                    });
+            // TODO: Pushpin functionality not fully tested...
+            function drawPushpin() {
+                if (setMode('pushpin')) {
+                    //Add a click event to the map to add pushpins.
+                    events.push(Microsoft.Maps.Events.addHandler(map, 'click', function (e) {
+                        currentShape = new Microsoft.Maps.Pushpin(e.location, {
+                            color: style.color
+                        });
 
-                    drawingLayer.add(currentShape);
-                }));
+                        drawingLayer.add(currentShape);
+                    }));
+                }
             }
-        }
 
-        // TODO: Polyline functionality not fully tested...
-        function drawPolyline() {
-            if (setMode('polyline')) {
-                //Create a new polyline.
-                tools.create(Microsoft.Maps.DrawingTools.ShapeType.polyline, function (s) {
-                    s.setOptions(style);
-                    currentShape = s;
-                });
-            }
-        }
-
-        function drawPolygon() {
-            if (setMode('polygon')) {
-                events.push(Microsoft.Maps.Events.addHandler(map, 'mousedown', function(e) {
-                    if (currentShape != null) {
-                        return;
-                    }
-
-                    // Disable zooming & lock map so it doesn't move when dragging
-                    map.setOptions({ disablePanning: true, disableZooming: true });
-
-                    // Create a new polygon
-                    tools.create(Microsoft.Maps.DrawingTools.ShapeType.polygon, function(s) {
+            // TODO: Polyline functionality not fully tested...
+            function drawPolyline() {
+                if (setMode('polyline')) {
+                    //Create a new polyline.
+                    tools.create(Microsoft.Maps.DrawingTools.ShapeType.polyline, function (s) {
                         s.setOptions(style);
                         currentShape = s;
                     });
-                }));
-
-                events.push(Microsoft.Maps.Events.addHandler(map, 'dblclick', function (e) {
-                    // Unlock map panning & zooming
-                    setTimeout(function(){ map.setOptions({ disablePanning: false, disableZooming: false }); }, 1);
-                    resetDrawingState();
-                }));
+                }
             }
-        }
 
-        function drawCircle() {
-            if (setMode('circle')) {
-                var isMouseDown = false;
+            function drawPolygon() {
+                if (setMode('polygon')) {
+                    events.push(Microsoft.Maps.Events.addHandler(map, 'mousedown', function(e) {
+                        if (currentShape != null) {
+                            return;
+                        }
 
-                events.push(Microsoft.Maps.Events.addHandler(map, 'click', function(e) {
-                    if (currentShape != null) {
-                        return;
-                    }
+                        // Disable zooming & lock map so it doesn't move when dragging
+                        map.setOptions({ disablePanning: true, disableZooming: true });
 
-                    // Disable zooming & lock map so it doesn't move when dragging
-                    map.setOptions({ disablePanning: true, disableZooming: true });
+                        // Create a new polygon
+                        tools.create(Microsoft.Maps.DrawingTools.ShapeType.polygon, function(s) {
+                            s.setOptions(style);
+                            currentShape = s;
+                        });
+                    }));
 
-                    // Create a polygon for the circle
-                    currentShape = new Microsoft.Maps.Polygon([e.location, e.location, e.location], style);
+                    events.push(Microsoft.Maps.Events.addHandler(map, 'dblclick', function (e) {
+                        // Unlock map panning & zooming
+                        setTimeout(function(){ map.setOptions({ disablePanning: false, disableZooming: false }); }, 1);
+                        resetDrawingState();
+                    }));
+                }
+            }
 
-                    // Store the center point in the polygons metadata
-                    currentShape.metadata = {
-                        type: 'circle',
-                        center: e.location
-                    };
+            function drawCircle() {
+                if (setMode('circle')) {
+                    var isMouseDown = false;
 
-                    drawingLayer.add(currentShape);
+                    events.push(Microsoft.Maps.Events.addHandler(map, 'click', function(e) {
+                        if (currentShape != null) {
+                            return;
+                        }
 
-                    isMouseDown = true;
-                }));
+                        // Disable zooming & lock map so it doesn't move when dragging
+                        map.setOptions({ disablePanning: true, disableZooming: true });
 
-                events.push(Microsoft.Maps.Events.addHandler(map, 'mousemove', function(e) {
-                    if (isMouseDown) {
+                        // Create a polygon for the circle
+                        currentShape = new Microsoft.Maps.Polygon([e.location, e.location, e.location], style);
+
+                        // Store the center point in the polygons metadata
+                        currentShape.metadata = {
+                            type: 'circle',
+                            center: e.location
+                        };
+
+                        drawingLayer.add(currentShape);
+
+                        isMouseDown = true;
+                    }));
+
+                    events.push(Microsoft.Maps.Events.addHandler(map, 'mousemove', function(e) {
+                        if (isMouseDown) {
+                            scaleCircle(e);
+                        }
+                    }));
+
+                    events.push(Microsoft.Maps.Events.addHandler(map, 'dblclick', function(e) {
                         scaleCircle(e);
-                    }
-                }));
 
-                events.push(Microsoft.Maps.Events.addHandler(map, 'dblclick', function(e) {
-                    scaleCircle(e);
+                        // Unlock map panning & zooming
+                        setTimeout(function() { map.setOptions({ disablePanning: false, disableZooming: false }); }, 1);
 
-                    // Unlock map panning & zooming
-                    setTimeout(function() { map.setOptions({ disablePanning: false, disableZooming: false }); }, 1);
+                        isMouseDown = false;
 
-                    isMouseDown = false;
-
-                    Microsoft.Maps.Events.invoke(tools, 'drawingEnded', currentShape);
-                }));
+                        Microsoft.Maps.Events.invoke(tools, 'drawingEnded', currentShape);
+                    }));
+                }
             }
-        }
 
-        function scaleCircle(e) {
-            if (currentShape && currentShape.metadata && currentShape.metadata.type === 'circle') {
-                //Calculate distance from circle center to mouse.
-                var radius = Microsoft.Maps.SpatialMath.getDistanceTo(currentShape.metadata.center, e.location);
+            function scaleCircle(e) {
+                if (currentShape && currentShape.metadata && currentShape.metadata.type === 'circle') {
+                    //Calculate distance from circle center to mouse.
+                    var radius = Microsoft.Maps.SpatialMath.getDistanceTo(currentShape.metadata.center, e.location);
 
-                //Calculate circle locations.
-                var locs = Microsoft.Maps.SpatialMath.getRegularPolygon(currentShape.metadata.center, radius, 100);
-
-                currentShape.metadata.radius = radius;
-
-                //Update the circles location.
-                currentShape.setLocations(locs);
-            }
-        }
-
-        function editCircle(e) {
-            //Lock map so it doesn't move when dragging.
-            map.setOptions({ disablePanning: true });
-
-            var circle = e.primitive;
-
-            var distanceCenter = Microsoft.Maps.SpatialMath.getDistanceTo(e.location, circle.metadata.center);
-            var radius = Microsoft.Maps.SpatialMath.getDistanceTo(circle.metadata.center, circle.getLocations()[0]);
-
-            //If the initial location is closer to the center of the circle, move it, otherwise scale it.
-            if (distanceCenter < (radius - distanceCenter)) {
-                events.push(Microsoft.Maps.Events.addHandler(map, 'mousemove', function (e) {
-                    currentShape.metadata.center = e.location;
-
+                    //Calculate circle locations.
                     var locs = Microsoft.Maps.SpatialMath.getRegularPolygon(currentShape.metadata.center, radius, 100);
+
+                    currentShape.metadata.radius = radius;
+
+                    //Update the circles location.
                     currentShape.setLocations(locs);
-                }));
-
-                events.push(Microsoft.Maps.Events.addHandler(map, 'mouseup', function (e) {
-                    currentShape.metadata.center = e.location;
-
-                    var locs = Microsoft.Maps.SpatialMath.getRegularPolygon(currentShape.metadata.center, radius, 100);
-                    currentShape.setLocations(locs);
-
-                    //Unlock map panning.
-                    map.setOptions({ disablePanning: false });
-
-                    //Remove all events except the first one.
-                    for (var i = 1; i < events.length; i++) {
-                        Microsoft.Maps.Events.removeHandler(events[i]);
-                    }
-                }));
-
-            } else {
-                events.push(Microsoft.Maps.Events.addHandler(map, 'mousemove', function (e) {
-                    scaleCircle(e);
-                }));
-
-                events.push(Microsoft.Maps.Events.addHandler(map, 'mouseup', function (e) {
-                    scaleCircle(e);
-
-                    //Unlock map panning.
-                    map.setOptions({ disablePanning: false });
-
-                    //Remove all events except the first one.
-                    for (var i = 1; i < events.length; i++) {
-                        Microsoft.Maps.Events.removeHandler(events[i]);
-                    }
-                }));
+                }
             }
-        }
 
-        function drawRectangle() {
-            if (setMode('rectangle')) {
-                var isMouseDown = false;
+            function editCircle(e) {
+                //Lock map so it doesn't move when dragging.
+                map.setOptions({ disablePanning: true });
 
-                events.push(Microsoft.Maps.Events.addHandler(map, 'click', function(e) {
-                    if (currentShape != null) {
-                        return;
-                    }
+                var circle = e.primitive;
 
-                    // Disable zooming & lock map so it doesn't move when dragging
-                    map.setOptions({ disablePanning: true, disableZooming: true });
+                var distanceCenter = Microsoft.Maps.SpatialMath.getDistanceTo(e.location, circle.metadata.center);
+                var radius = Microsoft.Maps.SpatialMath.getDistanceTo(circle.metadata.center, circle.getLocations()[0]);
 
-                    //Create a polygon for the circle.
-                    currentShape = new Microsoft.Maps.Polygon([e.location, e.location, e.location], style);
+                //If the initial location is closer to the center of the circle, move it, otherwise scale it.
+                if (distanceCenter < (radius - distanceCenter)) {
+                    events.push(Microsoft.Maps.Events.addHandler(map, 'mousemove', function (e) {
+                        currentShape.metadata.center = e.location;
 
-                    //Store the center point in the polygons metadata.
-                    currentShape.metadata = {
-                        type: 'rectangle'
-                    };
+                        var locs = Microsoft.Maps.SpatialMath.getRegularPolygon(currentShape.metadata.center, radius, 100);
+                        currentShape.setLocations(locs);
+                    }));
 
-                    drawingLayer.add(currentShape);
+                    events.push(Microsoft.Maps.Events.addHandler(map, 'mouseup', function (e) {
+                        currentShape.metadata.center = e.location;
 
-                    isMouseDown = true;
-                }));
+                        var locs = Microsoft.Maps.SpatialMath.getRegularPolygon(currentShape.metadata.center, radius, 100);
+                        currentShape.setLocations(locs);
 
-                events.push(Microsoft.Maps.Events.addHandler(map, 'mousemove', function(e) {
-                    if (isMouseDown) {
+                        //Unlock map panning.
+                        map.setOptions({ disablePanning: false });
+
+                        //Remove all events except the first one.
+                        for (var i = 1; i < events.length; i++) {
+                            Microsoft.Maps.Events.removeHandler(events[i]);
+                        }
+                    }));
+
+                } else {
+                    events.push(Microsoft.Maps.Events.addHandler(map, 'mousemove', function (e) {
+                        scaleCircle(e);
+                    }));
+
+                    events.push(Microsoft.Maps.Events.addHandler(map, 'mouseup', function (e) {
+                        scaleCircle(e);
+
+                        //Unlock map panning.
+                        map.setOptions({ disablePanning: false });
+
+                        //Remove all events except the first one.
+                        for (var i = 1; i < events.length; i++) {
+                            Microsoft.Maps.Events.removeHandler(events[i]);
+                        }
+                    }));
+                }
+            }
+
+            function drawRectangle() {
+                if (setMode('rectangle')) {
+                    var isMouseDown = false;
+
+                    events.push(Microsoft.Maps.Events.addHandler(map, 'click', function(e) {
+                        if (currentShape != null) {
+                            return;
+                        }
+
+                        // Disable zooming & lock map so it doesn't move when dragging
+                        map.setOptions({ disablePanning: true, disableZooming: true });
+
+                        //Create a polygon for the circle.
+                        currentShape = new Microsoft.Maps.Polygon([e.location, e.location, e.location], style);
+
+                        //Store the center point in the polygons metadata.
+                        currentShape.metadata = {
+                            type: 'rectangle'
+                        };
+
+                        drawingLayer.add(currentShape);
+
+                        isMouseDown = true;
+                    }));
+
+                    events.push(Microsoft.Maps.Events.addHandler(map, 'mousemove', function(e) {
+                        if (isMouseDown) {
+                            updateRectangle(e);
+                        }
+                    }));
+
+                    events.push(Microsoft.Maps.Events.addHandler(map, 'dblclick', function(e) {
                         updateRectangle(e);
-                    }
-                }));
 
-                events.push(Microsoft.Maps.Events.addHandler(map, 'dblclick', function(e) {
-                    updateRectangle(e);
+                        // Unlock map panning & zooming
+                        setTimeout(function() { map.setOptions({ disablePanning: false, disableZooming: false }); }, 1);
 
-                    // Unlock map panning & zooming
-                    setTimeout(function() { map.setOptions({ disablePanning: false, disableZooming: false }); }, 1);
+                        isMouseDown = false;
 
-                    isMouseDown = false;
-
-                    Microsoft.Maps.Events.invoke(tools, 'drawingEnded', currentShape);
-                }));
-            }
-        }
-
-        function editRectangle(e) {
-            //Find the closest rectangle corner to the specified location and update that index.
-            var locIdx = 0;
-            var locs = currentShape.getLocations();
-
-            var rectangle = e.primitive;
-
-            var minDistance = Microsoft.Maps.SpatialMath.getDistanceTo(e.location, locs[0]);
-            var tempDistance;
-
-            for (var i = 1; i < locs.length; i++) {
-                tempDistance = Microsoft.Maps.SpatialMath.getDistanceTo(e.location, locs[i]);
-                if (tempDistance < minDistance) {
-                    minDistance = tempDistance;
-                    locIdx = i;
+                        Microsoft.Maps.Events.invoke(tools, 'drawingEnded', currentShape);
+                    }));
                 }
             }
 
-            //Lock map panning.
-            map.setOptions({ disablePanning: true });
-
-            events.push(Microsoft.Maps.Events.addHandler(map, 'mousemove', function (e) {
-                updateRectangle(e, locIdx);
-            }));
-
-            events.push(Microsoft.Maps.Events.addHandler(map, 'mouseup', function (e) {
-                updateRectangle(e, locIdx);
-
-                //Unlock map panning.
-                map.setOptions({ disablePanning: false });
-
-                //Remove all events except the first one.
-                for (var i = 1; i < events.length; i++) {
-                    Microsoft.Maps.Events.removeHandler(events[i]);
-                }
-            }));
-        }
-
-        function updateRectangle(e, firstCornerIdx) {
-            if (typeof firstCornerIdx === 'undefined') {
-                firstCornerIdx = 2;
-            }
-
-            if (currentShape && currentShape.metadata && currentShape.metadata.type === 'rectangle') {
-                //Get the first corner of the rectangle.
+            function editRectangle(e) {
+                //Find the closest rectangle corner to the specified location and update that index.
+                var locIdx = 0;
                 var locs = currentShape.getLocations();
 
-                var secondIdx = (firstCornerIdx + 1) % 4;
-                var thirdCornerIdx = (firstCornerIdx + 2) % 4;
-                var fourthCornerIdx = (firstCornerIdx + 3) % 4;
+                var rectangle = e.primitive;
 
-                //Update the opposite corner of the rectangle.
-                locs[firstCornerIdx] = e.location;
+                var minDistance = Microsoft.Maps.SpatialMath.getDistanceTo(e.location, locs[0]);
+                var tempDistance;
 
-                //Calculate the other 3 corners of the rectanle.
-                locs[secondIdx] = new Microsoft.Maps.Location(locs[thirdCornerIdx].latitude,
-                    locs[firstCornerIdx].longitude);
-
-                locs[fourthCornerIdx] = new Microsoft.Maps.Location(locs[firstCornerIdx].latitude,
-                    locs[thirdCornerIdx].longitude);
-
-                if (locs.length === 5) {
-                    locs[4] = locs[0];
+                for (var i = 1; i < locs.length; i++) {
+                    tempDistance = Microsoft.Maps.SpatialMath.getDistanceTo(e.location, locs[i]);
+                    if (tempDistance < minDistance) {
+                        minDistance = tempDistance;
+                        locIdx = i;
+                    }
                 }
 
-                currentShape.setLocations(locs);
-            }
-        }
+                //Lock map panning.
+                map.setOptions({ disablePanning: true });
 
-        // TODO: Edit functionality not fully tested...
-        function edit() {
-            if (setMode('edit')) {
-                //Enable pushpin dragging in layer.
-                setPushpinDraggability(true);
+                events.push(Microsoft.Maps.Events.addHandler(map, 'mousemove', function (e) {
+                    updateRectangle(e, locIdx);
+                }));
 
-                events.push(Microsoft.Maps.Events.addHandler(drawingLayer, 'mousedown', function (e) {
-                    resetDrawingState();
+                events.push(Microsoft.Maps.Events.addHandler(map, 'mouseup', function (e) {
+                    updateRectangle(e, locIdx);
 
-                    currentShape = e.primitive;
+                    //Unlock map panning.
+                    map.setOptions({ disablePanning: false });
 
-                    if (e.primitive.metadata && e.primitive.metadata.type === 'circle') {
-                        editCircle(e);
-                    } else if (e.primitive.metadata && e.primitive.metadata.type === 'rectangle') {
-                        editRectangle(e);
-                    } else if (e.primitive instanceof Microsoft.Maps.Polyline ||
-                        e.primitive instanceof Microsoft.Maps.Polygon) {
-                        //Remove the shape from the map as the drawing tools will display it in the drawing layer.
-                        drawingLayer.remove(e.primitive);
-
-                        //Pass the shape to the drawing tools to be edited.
-                        tools.edit(e.primitive);
+                    //Remove all events except the first one.
+                    for (var i = 1; i < events.length; i++) {
+                        Microsoft.Maps.Events.removeHandler(events[i]);
                     }
                 }));
-            } else {
-                //Disable pushpin dragging in layer.
-                setPushpinDraggability(false);
-            }
-        }
-
-        // TODO: Erase functionality not fully tested...
-        function erase() {
-            if (setMode('erase')) {
-                events.push(Microsoft.Maps.Events.addHandler(drawingLayer, 'mousedown', function (e) {
-                    drawingLayer.remove(e.primitive);
-                }));
-            }
-        }
-
-        // Sets the drawing mode, or toggles out of a mode if it is already set.
-        // Returns true if the specified mode is new
-        function setMode(mode) {
-            // Remove all attached events
-            for (var i = 0; i < events.length; i++){
-                Microsoft.Maps.Events.removeHandler(events[i]);
             }
 
-            events = [];
-
-            // Unlock map so incase it has been locked previously
-            map.setOptions({ disablePanning: true });
-
-            var state = false;
-
-            if (currentMode === mode || mode === null) {
-                // Toggle out of currentMode mode
-                currentMode = null;
-            } else {
-                currentMode = mode;
-                state = true;
-            }
-
-            resetDrawingState();
-
-            return state;
-        }
-
-        function resetDrawingState() {
-            // Stop any current drawing
-            if (currentShape) {
-                tools.finish(function (s) {
-                    // Add the completed shape to the drawning to the drawing layer
-                    drawingLayer.add(s);
-                });
-
-                currentShape = null;
-            }
-
-            if (currentMode !== 'edit') {
-                //Disable pushpin dragging in layer.
-                setPushpinDraggability(false);
-            }
-        }
-
-        function setPushpinDraggability(draggable) {
-            var shapes = drawingLayer.getPrimitives();
-
-            for (var i = 0, len = shapes.length; i < len; i++) {
-                if (shapes[i] instanceof Microsoft.Maps.Pushpin) {
-                    shapes[i].setOptions({ draggable: draggable });
+            function updateRectangle(e, firstCornerIdx) {
+                if (typeof firstCornerIdx === 'undefined') {
+                    firstCornerIdx = 2;
                 }
-            }
-        }
 
-        function updateShapeStyle() {
-            if (currentShape) {
-                currentShape.setOptions(style);
+                if (currentShape && currentShape.metadata && currentShape.metadata.type === 'rectangle') {
+                    //Get the first corner of the rectangle.
+                    var locs = currentShape.getLocations();
 
-                //If the shape is a poly type it may be in edit mode, take it out, update and put it back in.
-                if (currentShape instanceof Microsoft.Maps.Polyline || currentShape instanceof Microsoft.Maps.Polygon) {
-                    tools.finish(function (s) {
-                        s.setOptions(style);
-                        tools.edit(s);
-                    });
-                }
-            }
-        }
+                    var secondIdx = (firstCornerIdx + 1) % 4;
+                    var thirdCornerIdx = (firstCornerIdx + 2) % 4;
+                    var fourthCornerIdx = (firstCornerIdx + 3) % 4;
+
+                    //Update the opposite corner of the rectangle.
+                    locs[firstCornerIdx] = e.location;
+
+                    //Calculate the other 3 corners of the rectanle.
+                    locs[secondIdx] = new Microsoft.Maps.Location(locs[thirdCornerIdx].latitude,
+                        locs[firstCornerIdx].longitude);
+
+                        locs[fourthCornerIdx] = new Microsoft.Maps.Location(locs[firstCornerIdx].latitude,
+                            locs[thirdCornerIdx].longitude);
+
+                            if (locs.length === 5) {
+                                locs[4] = locs[0];
+                            }
+
+                            currentShape.setLocations(locs);
+                        }
+                    }
+
+                    // TODO: Edit functionality not fully tested...
+                    function edit() {
+                        if (setMode('edit')) {
+                            //Enable pushpin dragging in layer.
+                            setPushpinDraggability(true);
+
+                            events.push(Microsoft.Maps.Events.addHandler(drawingLayer, 'mousedown', function (e) {
+                                resetDrawingState();
+
+                                currentShape = e.primitive;
+
+                                if (e.primitive.metadata && e.primitive.metadata.type === 'circle') {
+                                    editCircle(e);
+                                } else if (e.primitive.metadata && e.primitive.metadata.type === 'rectangle') {
+                                    editRectangle(e);
+                                } else if (e.primitive instanceof Microsoft.Maps.Polyline ||
+                                    e.primitive instanceof Microsoft.Maps.Polygon) {
+                                        //Remove the shape from the map as the drawing tools will display it in the drawing layer.
+                                        drawingLayer.remove(e.primitive);
+
+                                        //Pass the shape to the drawing tools to be edited.
+                                        tools.edit(e.primitive);
+                                    }
+                                }));
+                            } else {
+                                //Disable pushpin dragging in layer.
+                                setPushpinDraggability(false);
+                            }
+                        }
+
+                        // TODO: Erase functionality not fully tested...
+                        function erase() {
+                            if (setMode('erase')) {
+                                events.push(Microsoft.Maps.Events.addHandler(drawingLayer, 'mousedown', function (e) {
+                                    drawingLayer.remove(e.primitive);
+                                }));
+                            }
+                        }
+
+                        // Sets the drawing mode, or toggles out of a mode if it is already set.
+                        // Returns true if the specified mode is new
+                        function setMode(mode) {
+                            // Remove all attached events
+                            for (var i = 0; i < events.length; i++){
+                                Microsoft.Maps.Events.removeHandler(events[i]);
+                            }
+
+                            events = [];
+
+                            // Unlock map so incase it has been locked previously
+                            map.setOptions({ disablePanning: true });
+
+                            var state = false;
+
+                            if (currentMode === mode || mode === null) {
+                                // Toggle out of currentMode mode
+                                currentMode = null;
+                            } else {
+                                currentMode = mode;
+                                state = true;
+                            }
+
+                            resetDrawingState();
+
+                            return state;
+                        }
+
+                        function resetDrawingState() {
+                            // Stop any current drawing
+                            if (currentShape) {
+                                tools.finish(function (s) {
+                                    // Add the completed shape to the drawning to the drawing layer
+                                    drawingLayer.add(s);
+                                });
+
+                                currentShape = null;
+                            }
+
+                            if (currentMode !== 'edit') {
+                                //Disable pushpin dragging in layer.
+                                setPushpinDraggability(false);
+                            }
+                        }
+
+                        function setPushpinDraggability(draggable) {
+                            var shapes = drawingLayer.getPrimitives();
+
+                            for (var i = 0, len = shapes.length; i < len; i++) {
+                                if (shapes[i] instanceof Microsoft.Maps.Pushpin) {
+                                    shapes[i].setOptions({ draggable: draggable });
+                                }
+                            }
+                        }
+
+                        function updateShapeStyle() {
+                            if (currentShape) {
+                                currentShape.setOptions(style);
+
+                                //If the shape is a poly type it may be in edit mode, take it out, update and put it back in.
+                                if (currentShape instanceof Microsoft.Maps.Polyline || currentShape instanceof Microsoft.Maps.Polygon) {
+                                    tools.finish(function (s) {
+                                        s.setOptions(style);
+                                        tools.edit(s);
+                                    });
+                                }
+                            }
+                        }
+
+        });
     }
 
     return {
@@ -537,37 +541,41 @@ function geoJsonDirective() {
     'use strict';
 
     function link(scope, element, attrs, mapCtrl) {
-        Microsoft.Maps.loadModule(['Microsoft.Maps.GeoJson', 'Microsoft.Maps.AdvancedShapes'], function () {
-            init();
-        });
+        scope.$on('abm-v8-ready', function() {
 
-        var map;
-        var drawingLayer;
+            Microsoft.Maps.loadModule(['Microsoft.Maps.GeoJson', 'Microsoft.Maps.AdvancedShapes'], function () {
+                init();
+            });
 
-        function init() {
-            map = mapCtrl.map;
-            drawingLayer = new Microsoft.Maps.Layer();
-            map.layers.insert(drawingLayer);
+            var map;
+            var drawingLayer;
 
-            processGeoJson(scope.model);
+            function init() {
+                map = mapCtrl.map;
+                drawingLayer = new Microsoft.Maps.Layer();
+                map.layers.insert(drawingLayer);
 
-            scope.$watch('model', function () {
                 processGeoJson(scope.model);
-            });
 
-            scope.$on('$destroy', function() {
-                map.layers.remove(drawingLayer);
-            });
-        }
+                scope.$watch('model', function () {
+                    processGeoJson(scope.model);
+                });
 
-        function processGeoJson(model) {
-            if (model) {
-                var shapes = Microsoft.Maps.GeoJson.read(model);
-                drawingLayer.add(shapes);
-            } else {
-                drawingLayer.clear();
+                scope.$on('$destroy', function() {
+                    map.layers.remove(drawingLayer);
+                });
             }
-        }
+
+            function processGeoJson(model) {
+                if (model) {
+                    var shapes = Microsoft.Maps.GeoJson.read(model);
+                    drawingLayer.add(shapes);
+                } else {
+                    drawingLayer.clear();
+                }
+            }
+
+        });
     }
 
     return {
@@ -589,60 +597,67 @@ function infoBoxDirective() {
     'use strict';
 
     function link(scope, element, attrs, ctrls) {
-        var provider = ctrls[0];
-        var pushpinCtrl = ctrls[1];
-        var infobox = new Microsoft.Maps.Infobox(new Microsoft.Maps.Location(0.0 , 0.0));
+        scope.$on('abm-v8-ready', function() {
 
-        infobox.setMap(provider.map);
+            var provider = ctrls[0];
+            var pushpinCtrl = ctrls[1];
+            var infobox = new Microsoft.Maps.Infobox(new Microsoft.Maps.Location(0.0 , 0.0));
 
-        function updateLocation() {
-            infobox.setLocation(new Microsoft.Maps.Location(scope.lat, scope.lng));
-        }
+            infobox.setMap(provider.map);
 
-        function updateOptions() {
-            if (!scope.options) {
-                scope.options = {};
+            function updateLocation() {
+                infobox.setLocation(new Microsoft.Maps.Location(scope.lat, scope.lng));
             }
 
-            if (scope.title) {
-                scope.options.title = scope.title;
+            function updateOptions() {
+                if (!scope.options) {
+                    scope.options = {};
+                }
+
+                if (scope.title) {
+                    scope.options.title = scope.title;
+                }
+
+                if (scope.description) {
+                    scope.options.description = scope.description;
+                }
+
+                if (scope.hasOwnProperty('visible')) {
+                    scope.options.visible = scope.visible;
+                } else {
+                    scope.options.visible = true;
+                }
+
+                infobox.setOptions(scope.options);
             }
 
-            if (scope.description) {
-                scope.options.description = scope.description;
-            }
+            scope.$on('positionUpdated', function(event, location) {
+                infobox.setLocation(location);
+            });
 
-            if (scope.hasOwnProperty('visible')) {
-                scope.options.visible = scope.visible;
+            // This was not the child of a pushpin, so use the lat & lng
+            if (!pushpinCtrl) {
+                scope.$watch('lat', updateLocation);
+                scope.$watch('lng', updateLocation);
             } else {
-                scope.options.visible = true;
+                infobox.setLocation(pushpinCtrl.pin.getLocation());
             }
 
-            // TODO: Define a default offset for the default infobox to prevent overlapping default marker??? Maybe....
-            infobox.setOptions(scope.options);
-        }
+            scope.$watch('options', updateOptions);
+            scope.$watch('title', updateOptions);
+            scope.$watch('description', updateOptions);
+            scope.$watch('visible', updateOptions);
 
-        scope.$on('positionUpdated', function(event, location) {
-           infobox.setLocation(location);
+            scope.$on('$destroy', unregisterEventListeners);
+            element.on('$destroy', unregisterEventListeners);
+
+            function unregisterEventListeners() {
+                infobox.setMap(null);
+            }
+
+            updateOptions();
+
         });
-
-        // This was not the child of a pushpin, so use the lat & lng
-        if (!pushpinCtrl) {
-            scope.$watch('lat', updateLocation);
-            scope.$watch('lng', updateLocation);
-        }
-
-        scope.$watch('options', updateOptions);
-        scope.$watch('title', updateOptions);
-        scope.$watch('description', updateOptions);
-        scope.$watch('visible', updateOptions);
-
-        scope.$on('$destroy', unregisterEventListeners);
-        element.on('$destroy', unregisterEventListeners);
-
-        function unregisterEventListeners() {
-            infobox.setMap(null);
-        }
     }
 
     return {
@@ -684,73 +699,81 @@ function bingMapDirective(angularBingMaps) {
         controller: ['$scope', '$element', function ($scope, $element) {
             // Controllers get instantiated before link function is run, so instantiate the map in the Controller
             // so that it is available to child link functions
+            var _this = this;
+            angular.element(document).ready(function () {
+                // Get default mapOptions the user set in config block
+                var mapOptions = angularBingMaps.getDefaultMapOptions();
 
-            // Get default mapOptions the user set in config block
-            var mapOptions = angularBingMaps.getDefaultMapOptions();
+                // Add in any options they passed directly into the directive
+                angular.extend(mapOptions, $scope.options);
 
-            // Add in any options they passed directly into the directive
-            angular.extend(mapOptions, $scope.options);
-
-            if (mapOptions) {
-                //If the user didnt set credentials in config block, look for them on scope
-                if (!mapOptions.hasOwnProperty('credentials')) {
-                    mapOptions.credentials = $scope.credentials;
-                }
-            } else {
-                //The user didnt set any mapOptions on the scope OR in the config block, so create a default one
-                mapOptions = {credentials: $scope.credentials};
-            }
-
-            var $container = $element[0];
-            var $section = $container.querySelector('section');
-
-            $section.style.width = mapOptions.width;
-            $section.style.height = mapOptions.height;
-
-            this.map = new Microsoft.Maps.Map($section, mapOptions);
-
-            var eventHandlers = {};
-            $scope.map = this.map;
-
-            $scope.$watch('center', function (center) {
-                $scope.map.setView({animate: true, center: center});
-            });
-
-            $scope.$watch('zoom', function (zoom) {
-                $scope.map.setView({animate: true, zoom: zoom});
-            });
-
-            $scope.$watch('mapType', function (mapTypeId) {
-                $scope.map.setView({animate: true, mapTypeId: mapTypeId});
-            });
-
-            $scope.$watch('options', function(options) {
-                if (options !== undefined) {
-                    $scope.map.setOptions(options);
-                }
-            });
-
-            $scope.$watch('events', function (events) {
-                //Loop through each event handler
-                angular.forEach(events, function (usersHandler, eventName) {
-                    //If we already created an event handler, remove it
-                    if (eventHandlers.hasOwnProperty(eventName)) {
-                        Microsoft.Maps.Events.removeHandler(eventHandlers[eventName]);
+                if (mapOptions) {
+                    //If the user didnt set credentials in config block, look for them on scope
+                    if (!mapOptions.hasOwnProperty('credentials')) {
+                        mapOptions.credentials = $scope.credentials;
                     }
+                } else {
+                    //The user didnt set any mapOptions on the scope OR in the config block, so create a default one
+                    mapOptions = {credentials: $scope.credentials};
+                }
 
-                    var bingMapsHandler = Microsoft.Maps.Events.addHandler($scope.map, eventName, function (event) {
-                        usersHandler(event);
-                        $scope.$apply();
-                    });
+                var $container = $element[0];
+                var $section = $container.querySelector('section');
 
-                    eventHandlers[eventName] = bingMapsHandler;
+                $section.style.width = mapOptions.width;
+                $section.style.height = mapOptions.height;
+
+                _this.map = new Microsoft.Maps.Map($section, mapOptions);
+
+                var eventHandlers = {};
+                $scope.map = _this.map;
+
+                $scope.$watch('center', function (center) {
+                    $scope.map.setView({animate: true, center: center});
                 });
+
+                $scope.$watch('zoom', function (zoom) {
+                    $scope.map.setView({animate: true, zoom: zoom});
+                });
+
+                $scope.$watch('mapType', function (mapTypeId) {
+                    $scope.map.setView({animate: true, mapTypeId: mapTypeId});
+                });
+
+                $scope.$watch('options', function(options) {
+                    if (options !== undefined) {
+                        $scope.map.setOptions(options);
+                    }
+                });
+
+                $scope.$watch('events', function (events) {
+                    //Loop through each event handler
+                    angular.forEach(events, function (usersHandler, eventName) {
+                        //If we already created an event handler, remove it
+                        if (eventHandlers.hasOwnProperty(eventName)) {
+                            Microsoft.Maps.Events.removeHandler(eventHandlers[eventName]);
+                        }
+
+                        var bingMapsHandler = Microsoft.Maps.Events.addHandler($scope.map, eventName, function (event) {
+                            usersHandler(event);
+                            $scope.$apply();
+                        });
+
+                        eventHandlers[eventName] = bingMapsHandler;
+                    });
+                });
+                $scope.$apply();
+                $scope.$broadcast('abm-v8-ready');
             });
+
+
         }],
         link: function ($scope, $element) {
-            if ($scope.onMapReady) {
-                $scope.onMapReady({ map: $scope.map });
-            }
+            $scope.$on('abm-v8-ready', function() {
+                if ($scope.onMapReady) {
+                    $scope.onMapReady({ map: $scope.map });
+                }
+            });
         }
     };
 
@@ -764,73 +787,79 @@ function polygonDirective(MapUtils) {
     'use strict';
 
     function link(scope, element, attrs, mapCtrl) {
-        var bingMapLocations = [];
-        var eventHandlers = {};
 
-        function generateBingMapLocations() {
-            bingMapLocations = MapUtils.convertToMicrosoftLatLngs(scope.locations);
-        }
+        scope.$on('abm-v8-ready', function() {
 
-        generateBingMapLocations();
+            var bingMapLocations = [];
+            var eventHandlers = {};
 
-        var polygon = new Microsoft.Maps.Polygon(bingMapLocations);
-        mapCtrl.map.entities.push(polygon);
-
-        function generateOptions() {
-            if (!scope.options) {
-                scope.options = {};
+            function generateBingMapLocations() {
+                bingMapLocations = MapUtils.convertToMicrosoftLatLngs(scope.locations);
             }
 
-            if (scope.fillColor) {
-                scope.options.fillColor = MapUtils.makeMicrosoftColor(scope.fillColor);
-            }
-
-            if (scope.strokeColor) {
-                scope.options.strokeColor = MapUtils.makeMicrosoftColor(scope.strokeColor);
-            }
-        }
-
-        scope.$watch('options', function (newOptions) {
-            if (newOptions === undefined) {
-                return;
-            }
-
-            polygon.setOptions(newOptions);
-        }, true);
-
-        scope.$watch('locations', function() {
             generateBingMapLocations();
-            polygon.setLocations(bingMapLocations);
-        });
 
-        scope.$watch('fillColor', generateOptions);
-        scope.$watch('strokeColor', generateOptions);
+            var polygon = new Microsoft.Maps.Polygon(bingMapLocations);
+            mapCtrl.map.entities.push(polygon);
 
-        scope.$on('$destroy', function() {
-            mapCtrl.map.entities.remove(polygon);
-        });
-
-        scope.$watch('events', function(events) {
-            // Loop through each event handler
-            angular.forEach(events, function(usersHandler, eventName) {
-                // If we already created an event handler, remove it
-                if (eventHandlers.hasOwnProperty(eventName)) {
-                    Microsoft.Maps.Events.removeHandler(eventHandlers[eventName]);
+            function generateOptions() {
+                if (!scope.options) {
+                    scope.options = {};
                 }
 
-                var bingMapsHandler = Microsoft.Maps.Events.addHandler(polygon, eventName, function(event) {
-                    // As a convenience, add tracker id to target attribute for user to ID target of event
-                    if (typeof scope.trackBy !== 'undefined') {
-                        event.target['trackBy'] = scope.trackBy;
+                if (scope.fillColor) {
+                    scope.options.fillColor = MapUtils.makeMicrosoftColor(scope.fillColor);
+                }
+
+                if (scope.strokeColor) {
+                    scope.options.strokeColor = MapUtils.makeMicrosoftColor(scope.strokeColor);
+                }
+            }
+
+            scope.$watch('options', function (newOptions) {
+                if (newOptions === undefined) {
+                    return;
+                }
+
+                polygon.setOptions(newOptions);
+            }, true);
+
+            scope.$watch('locations', function() {
+                generateBingMapLocations();
+                polygon.setLocations(bingMapLocations);
+            });
+
+            scope.$watch('fillColor', generateOptions);
+            scope.$watch('strokeColor', generateOptions);
+
+            scope.$on('$destroy', function() {
+                mapCtrl.map.entities.remove(polygon);
+            });
+
+            scope.$watch('events', function(events) {
+                // Loop through each event handler
+                angular.forEach(events, function(usersHandler, eventName) {
+                    // If we already created an event handler, remove it
+                    if (eventHandlers.hasOwnProperty(eventName)) {
+                        Microsoft.Maps.Events.removeHandler(eventHandlers[eventName]);
                     }
 
-                    usersHandler(event);
-                    scope.$apply();
-                });
+                    var bingMapsHandler = Microsoft.Maps.Events.addHandler(polygon, eventName, function(event) {
+                        // As a convenience, add tracker id to target attribute for user to ID target of event
+                        if (typeof scope.trackBy !== 'undefined') {
+                            event.target['trackBy'] = scope.trackBy;
+                        }
 
-                eventHandlers[eventName] = bingMapsHandler;
+                        usersHandler(event);
+                        scope.$apply();
+                    });
+
+                    eventHandlers[eventName] = bingMapsHandler;
+                });
             });
+
         });
+
     }
 
     return {
@@ -857,44 +886,48 @@ function polylineDirective(MapUtils) {
     'use strict';
 
     function link(scope, element, attrs, mapCtrl) {
-        var bingMapLocations = [];
+        scope.$on('abm-v8-ready', function() {
 
-        function generateBingMapLocations() {
-            bingMapLocations = MapUtils.convertToMicrosoftLatLngs(scope.locations);
-        }
+            var bingMapLocations = [];
 
-        generateBingMapLocations();
-
-        var polyline = new Microsoft.Maps.Polyline(bingMapLocations);
-        mapCtrl.map.entities.push(polyline);
-
-        function generateOptions() {
-            if (!scope.options) {
-                scope.options = {};
+            function generateBingMapLocations() {
+                bingMapLocations = MapUtils.convertToMicrosoftLatLngs(scope.locations);
             }
 
-            if (scope.strokeColor) {
-                scope.options.strokeColor = MapUtils.makeMicrosoftColor(scope.strokeColor);
-            }
-        }
-
-        scope.$watch('options', function (newOptions) {
-            if (newOptions === undefined) {
-                return;
-            }
-
-            polyline.setOptions(newOptions);
-        }, true);
-
-        scope.$watch('locations', function() {
             generateBingMapLocations();
-            polyline.setLocations(bingMapLocations);
-        });
 
-        scope.$watch('strokeColor', generateOptions);
+            var polyline = new Microsoft.Maps.Polyline(bingMapLocations);
+            mapCtrl.map.entities.push(polyline);
 
-        scope.$on('$destroy', function() {
-            mapCtrl.map.entities.remove(polyline);
+            function generateOptions() {
+                if (!scope.options) {
+                    scope.options = {};
+                }
+
+                if (scope.strokeColor) {
+                    scope.options.strokeColor = MapUtils.makeMicrosoftColor(scope.strokeColor);
+                }
+            }
+
+            scope.$watch('options', function (newOptions) {
+                if (newOptions === undefined) {
+                    return;
+                }
+
+                polyline.setOptions(newOptions);
+            }, true);
+
+            scope.$watch('locations', function() {
+                generateBingMapLocations();
+                polyline.setLocations(bingMapLocations);
+            });
+
+            scope.$watch('strokeColor', generateOptions);
+
+            scope.$on('$destroy', function() {
+                mapCtrl.map.entities.remove(polyline);
+            });
+
         });
     }
 
@@ -919,76 +952,79 @@ function pushpinDirective() {
     'use strict';
 
     function link(scope, element, attrs, mapCtrl) {
+        scope.$on('abm-v8-ready', function() {
+            var eventHandlers = {};
 
-        var eventHandlers = {};
-
-        function updatePosition() {
-            if (!isNaN(scope.lat) && !isNaN(scope.lng)) {
-                scope.pin.setLocation(new Microsoft.Maps.Location(scope.lat, scope.lng));
-                scope.$broadcast('positionUpdated', scope.pin.getLocation());
-            }
-        }
-
-        updatePosition();
-        mapCtrl.map.entities.push(scope.pin);
-
-        scope.$watch('lat', updatePosition);
-        scope.$watch('lng', updatePosition);
-
-        scope.$watch('options', function (newOptions) {
-            if (newOptions === undefined) {
-                return;
+            function updatePosition() {
+                if (!isNaN(scope.lat) && !isNaN(scope.lng)) {
+                    scope.pin.setLocation(new Microsoft.Maps.Location(scope.lat, scope.lng));
+                    scope.$broadcast('positionUpdated', scope.pin.getLocation());
+                }
             }
 
-            scope.pin.setOptions(newOptions);
-        });
+            updatePosition();
+            mapCtrl.map.entities.push(scope.pin);
 
-        scope.$watch('pushpinData', function (newPushpinData) {
-            scope.pin.pushpinData = newPushpinData;
-        });
+            scope.$watch('lat', updatePosition);
+            scope.$watch('lng', updatePosition);
 
-        scope.$watch('events', function(events) {
-            // Loop through each event handler
-            angular.forEach(events, function(usersHandler, eventName) {
-                // If we already created an event handler, remove it
-                if (eventHandlers.hasOwnProperty(eventName)) {
-                    Microsoft.Maps.Events.removeHandler(eventHandlers[eventName]);
+            scope.$watch('options', function (newOptions) {
+                if (newOptions === undefined) {
+                    return;
                 }
 
-                var bingMapsHandler = Microsoft.Maps.Events.addHandler(scope.pin, eventName, function(event) {
-                    // As a convenience, add tracker id to target attribute for user to ID target of event
-                    if (typeof scope.trackBy !== 'undefined') {
-                        event.target['trackBy'] = scope.trackBy;
+                scope.pin.setOptions(newOptions);
+            });
+
+            scope.$watch('pushpinData', function (newPushpinData) {
+                scope.pin.pushpinData = newPushpinData;
+            });
+
+            scope.$watch('events', function(events) {
+                // Loop through each event handler
+                angular.forEach(events, function(usersHandler, eventName) {
+                    // If we already created an event handler, remove it
+                    if (eventHandlers.hasOwnProperty(eventName)) {
+                        Microsoft.Maps.Events.removeHandler(eventHandlers[eventName]);
                     }
 
-                    usersHandler(event);
-                    scope.$apply();
+                    var bingMapsHandler = Microsoft.Maps.Events.addHandler(scope.pin, eventName, function(event) {
+                        // As a convenience, add tracker id to target attribute for user to ID target of event
+                        if (typeof scope.trackBy !== 'undefined') {
+                            event.target['trackBy'] = scope.trackBy;
+                        }
+
+                        usersHandler(event);
+                        scope.$apply();
+                    });
+
+                    eventHandlers[eventName] = bingMapsHandler;
                 });
-
-                eventHandlers[eventName] = bingMapsHandler;
             });
-        });
 
-        Microsoft.Maps.Events.addHandler(scope.pin, 'dragend', function (e) {
-            var loc = e.entity.getLocation();
-            scope.lat = loc.latitude;
-            scope.lng = loc.longitude;
-            scope.$apply();
-        });
-
-        function isValidEvent(event) {
-            //TODO: Implement me like one of your french girls
-            return true;
-        }
-
-        scope.$on('$destroy', function() {
-            mapCtrl.map.entities.remove(scope.pin);
-
-            // Is this necessary? Doing it just to be safe
-            angular.forEach(eventHandlers, function(handler, eventName) {
-                Microsoft.Maps.Events.removeHandler(handler);
+            Microsoft.Maps.Events.addHandler(scope.pin, 'dragend', function (e) {
+                var loc = e.entity.getLocation();
+                scope.lat = loc.latitude;
+                scope.lng = loc.longitude;
+                scope.$apply();
             });
+
+            function isValidEvent(event) {
+                //TODO: Implement me like one of your french girls
+                return true;
+            }
+
+            scope.$on('$destroy', function() {
+                mapCtrl.map.entities.remove(scope.pin);
+
+                // Is this necessary? Doing it just to be safe
+                angular.forEach(eventHandlers, function(handler, eventName) {
+                    Microsoft.Maps.Events.removeHandler(handler);
+                });
+            });
+
         });
+
     }
 
     return {
@@ -1021,52 +1057,58 @@ function tileLayerDirective() {
     'use strict';
 
     function link(scope, element, attrs, mapCtrl) {
-        var tileSource, tileLayer;
 
-        function createTileSource() {
-            if (!tileSource) {
-                tileSource = new Microsoft.Maps.TileSource({
-                    uriConstructor: scope.source
-                });
+        scope.$on('abm-v8-ready', function() {
+            var tileSource, tileLayer;
+
+            function createTileSource() {
+                if (!tileSource) {
+                    tileSource = new Microsoft.Maps.TileSource({
+                        uriConstructor: scope.source
+                    });
+                }
+
+                if (scope.options) {
+                    angular.extend(scope.options, {
+                        mercator: tileSource
+                    });
+                } else {
+                    scope.options = {
+                        mercator: tileSource
+                    };
+                }
+
+                if (tileLayer) {
+                    tileLayer.setOptions(scope.options);
+                } else {
+                    tileLayer = new Microsoft.Maps.TileLayer(scope.options);
+                    mapCtrl.map.layers.insert(tileLayer);
+                }
             }
 
-            if (scope.options) {
-                angular.extend(scope.options, {
-                    mercator: tileSource
-                });
-            } else {
-                scope.options = {
-                    mercator: tileSource
+            scope.$watch(function(scope) {
+                var options = scope.options;
+                return {
+                    downloadTimeout: options.downloadTimeout,
+                    opacity: options.opacity,
+                    visible: options.visible,
+                    zIndex: options.zIndex
                 };
-            }
+            }, function() {
+                createTileSource();
+            }, true);
 
-            if (tileLayer) {
-                tileLayer.setOptions(scope.options);
-            } else {
-                tileLayer = new Microsoft.Maps.TileLayer(scope.options);
-                mapCtrl.map.layers.insert(tileLayer);
-            }
-        }
+            scope.$watch('source', function() {
+                createTileSource();
+            });
 
-        scope.$watch(function(scope) {
-            var options = scope.options;
-            return {
-                downloadTimeout: options.downloadTimeout,
-                opacity: options.opacity,
-                visible: options.visible,
-                zIndex: options.zIndex
-            };
-        }, function() {
-            createTileSource();
-        }, true);
+            scope.$on('$destroy', function() {
+                mapCtrl.map.layers.remove(tileLayer);
+            });
 
-        scope.$watch('source', function() {
-            createTileSource();
         });
 
-        scope.$on('$destroy', function() {
-            mapCtrl.map.layers.remove(tileLayer);
-        });
+
     }
 
     return {
@@ -1091,107 +1133,111 @@ function wktDirective(MapUtils) {
     'use strict';
 
     function link(scope, element, attrs, mapCtrl) {
-        Microsoft.Maps.loadModule(['Microsoft.Maps.WellKnownText', 'Microsoft.Maps.AdvancedShapes'], function () {
-            init();
-        });
+        scope.$on('abm-v8-ready', function() {
 
-        var map;
-        var drawingLayer;
-        var entity = null;
-        var eventHandlers = [];
+            Microsoft.Maps.loadModule(['Microsoft.Maps.WellKnownText', 'Microsoft.Maps.AdvancedShapes'], function () {
+                init();
+            });
 
-        function init() {
-            map = mapCtrl.map;
-            drawingLayer = new Microsoft.Maps.Layer();
-            map.layers.insert(drawingLayer);
+            var map;
+            var drawingLayer;
+            var entity = null;
+            var eventHandlers = [];
 
-            processWkt(scope.text);
+            function init() {
+                map = mapCtrl.map;
+                drawingLayer = new Microsoft.Maps.Layer();
+                map.layers.insert(drawingLayer);
 
-            // Watchers
-            scope.$watch('text', function(shape) {
-                processWkt(shape);
-            }, true);
+                processWkt(scope.text);
 
-            scope.$watch('events', function(events) {
-                removeAllHandlers();
-                //Loop through each event handler
-                angular.forEach(events, function(usersHandler, eventName) {
-                    if (entity instanceof Microsoft.Maps.EntityCollection) {
-                        //Add the handler to all entities in collection
-                        for (var i = 0; i < entity.getLength(); i++) {
-                            addHandler(entity.get(i), eventName, usersHandler);
+                // Watchers
+                scope.$watch('text', function(shape) {
+                    processWkt(shape);
+                }, true);
+
+                scope.$watch('events', function(events) {
+                    removeAllHandlers();
+                    //Loop through each event handler
+                    angular.forEach(events, function(usersHandler, eventName) {
+                        if (entity instanceof Microsoft.Maps.EntityCollection) {
+                            //Add the handler to all entities in collection
+                            for (var i = 0; i < entity.getLength(); i++) {
+                                addHandler(entity.get(i), eventName, usersHandler);
+                            }
+                        } else {
+                            addHandler(entity, eventName, usersHandler);
                         }
-                    } else {
-                        addHandler(entity, eventName, usersHandler);
-                    }
+                    });
                 });
-            });
 
-            scope.$watch('fillColor', setOptions, true);
-            scope.$watch('strokeColor', setOptions, true);
-        }
-
-        function processWkt(shape) {
-            if (entity) {
-                // Something is already on the map, remove that
-                drawingLayer.clear();
+                scope.$watch('fillColor', setOptions, true);
+                scope.$watch('strokeColor', setOptions, true);
             }
 
-            if (shape && typeof shape === 'string') {
-                // Read it and add it to the map
-                entity = Microsoft.Maps.WellKnownText.read(shape, scope.styles);
-                setOptions();
-                drawingLayer.add(entity);
-            }
-        }
+            function processWkt(shape) {
+                if (entity) {
+                    // Something is already on the map, remove that
+                    drawingLayer.clear();
+                }
 
-        function setOptions() {
-            //Entity not parsed yet
-            if (!entity) { return; }
-
-            var options = {};
-            if (scope.fillColor) {
-                options.fillColor = MapUtils.makeMicrosoftColor(scope.fillColor);
+                if (shape && typeof shape === 'string') {
+                    // Read it and add it to the map
+                    entity = Microsoft.Maps.WellKnownText.read(shape, scope.styles);
+                    setOptions();
+                    drawingLayer.add(entity);
+                }
             }
 
-            if (scope.strokeColor) {
-                options.strokeColor = MapUtils.makeMicrosoftColor(scope.strokeColor);
-            }
+            function setOptions() {
+                //Entity not parsed yet
+                if (!entity) { return; }
 
-            if (entity instanceof Microsoft.Maps.EntityCollection) {
-                for (var i = 0; i < entity.getLength(); i++) {
-                    if (entity.get(i) instanceof Microsoft.Maps.Polygon) {
-                        entity.get(i).setOptions(options);
+                var options = {};
+                if (scope.fillColor) {
+                    options.fillColor = MapUtils.makeMicrosoftColor(scope.fillColor);
+                }
+
+                if (scope.strokeColor) {
+                    options.strokeColor = MapUtils.makeMicrosoftColor(scope.strokeColor);
+                }
+
+                if (entity instanceof Microsoft.Maps.EntityCollection) {
+                    for (var i = 0; i < entity.getLength(); i++) {
+                        if (entity.get(i) instanceof Microsoft.Maps.Polygon) {
+                            entity.get(i).setOptions(options);
+                        }
                     }
+                } else {
+                    entity.setOptions(options);
                 }
-            } else {
-                entity.setOptions(options);
             }
-        }
 
-        function addHandler(target, eventName, userHandler) {
-            var handler = Microsoft.Maps.Events.addHandler(target, eventName, function(event) {
-                if (typeof scope.trackBy !== 'undefined') {
-                    event.target['trackBy'] = scope.trackBy;
+            function addHandler(target, eventName, userHandler) {
+                var handler = Microsoft.Maps.Events.addHandler(target, eventName, function(event) {
+                    if (typeof scope.trackBy !== 'undefined') {
+                        event.target['trackBy'] = scope.trackBy;
+                    }
+
+                    userHandler(event);
+                    scope.$apply();
+                });
+
+                eventHandlers.push(handler);
+            }
+
+            function removeAllHandlers() {
+                var handler = eventHandlers.pop();
+                while (typeof handler === 'function') {
+                    Microsoft.Maps.Events.removeHandler(handler);
+                    handler = eventHandlers.pop();
                 }
+            }
 
-                userHandler(event);
-                scope.$apply();
+            scope.$on('$destroy', function() {
+                map.layers.remove(drawingLayer);
             });
-
-            eventHandlers.push(handler);
-        }
-
-        function removeAllHandlers() {
-            var handler = eventHandlers.pop();
-            while (typeof handler === 'function') {
-                Microsoft.Maps.Events.removeHandler(handler);
-                handler = eventHandlers.pop();
-            }
-        }
-
-        scope.$on('$destroy', function() {
-            map.layers.remove(drawingLayer);
+            
         });
     }
 
@@ -1212,6 +1258,53 @@ function wktDirective(MapUtils) {
 }
 
 angular.module('angularBingMaps.directives').directive('wkt', wktDirective);
+
+/*global angular, Microsoft */
+
+function angularBingMapsProvider() {
+    'use strict';
+
+    var defaultMapOptions = {
+        width: '100vw',
+        height: '100vh'
+    };
+    
+    var centerBindEvent = 'viewchangeend';
+
+    function setDefaultMapOptions(usersOptions) {
+        defaultMapOptions = usersOptions;
+    }
+
+    function getDefaultMapOptions() {
+        return defaultMapOptions;
+    }
+
+    function bindCenterRealtime(_bindCenterRealtime) {
+        if(_bindCenterRealtime) {
+            centerBindEvent = 'viewchange';
+        } else {
+            centerBindEvent = 'viewchangeend';
+        }
+    }
+
+    function getCenterBindEvent() {
+        return centerBindEvent;
+    }
+
+    return {
+        setDefaultMapOptions: setDefaultMapOptions,
+        bindCenterRealtime: bindCenterRealtime,
+        $get: function() {
+            return {
+                getDefaultMapOptions: getDefaultMapOptions,
+                getCenterBindEvent: getCenterBindEvent
+            };
+        }
+    };
+
+}
+
+angular.module('angularBingMaps.providers').provider('angularBingMaps', angularBingMapsProvider);
 
 /*global angular, Microsoft, DrawingTools, console*/
 
@@ -1302,53 +1395,6 @@ function mapUtilsService($q) {
 }
 
 angular.module('angularBingMaps.services').service('MapUtils', mapUtilsService);
-
-/*global angular, Microsoft */
-
-function angularBingMapsProvider() {
-    'use strict';
-
-    var defaultMapOptions = {
-        width: '100vw',
-        height: '100vh'
-    };
-    
-    var centerBindEvent = 'viewchangeend';
-
-    function setDefaultMapOptions(usersOptions) {
-        defaultMapOptions = usersOptions;
-    }
-
-    function getDefaultMapOptions() {
-        return defaultMapOptions;
-    }
-
-    function bindCenterRealtime(_bindCenterRealtime) {
-        if(_bindCenterRealtime) {
-            centerBindEvent = 'viewchange';
-        } else {
-            centerBindEvent = 'viewchangeend';
-        }
-    }
-
-    function getCenterBindEvent() {
-        return centerBindEvent;
-    }
-
-    return {
-        setDefaultMapOptions: setDefaultMapOptions,
-        bindCenterRealtime: bindCenterRealtime,
-        $get: function() {
-            return {
-                getDefaultMapOptions: getDefaultMapOptions,
-                getCenterBindEvent: getCenterBindEvent
-            };
-        }
-    };
-
-}
-
-angular.module('angularBingMaps.providers').provider('angularBingMaps', angularBingMapsProvider);
 
 },{"color":6}],2:[function(require,module,exports){
 /* MIT license */
