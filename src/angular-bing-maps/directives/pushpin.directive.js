@@ -82,8 +82,11 @@ function pushpinDirective() {
     return {
         link: link,
         controller: ['$scope', function ($scope) {
-            this.pin = new Microsoft.Maps.Pushpin(new Microsoft.Maps.Location(0.0, 0.0));
-            $scope.pin = this.pin;
+            var _this = this;
+            $scope.$on('abm-v8-ready', function() {
+                _this.pin = new Microsoft.Maps.Pushpin(new Microsoft.Maps.Location(0.0, 0.0));
+                $scope.pin = _this.pin;
+            });
         }],
         template: '<div ng-transclude></div>',
         restrict: 'EA',

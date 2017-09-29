@@ -13,7 +13,10 @@ function infoBoxDirective() {
             infobox.setMap(provider.map);
 
             function updateLocation() {
-                infobox.setLocation(new Microsoft.Maps.Location(scope.lat, scope.lng));
+                //Ensure lat and lng are defined first
+                if(scope.lat && scope.lng) {
+                    infobox.setLocation(new Microsoft.Maps.Location(scope.lat, scope.lng));
+                }
             }
 
             function updateOptions() {
