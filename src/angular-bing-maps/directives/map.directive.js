@@ -1,6 +1,6 @@
 /*global angular, Microsoft*/
 
-function bingMapDirective(angularBingMaps) {
+function bingMapDirective(angularBingMaps, $window) {
     'use strict';
 
     return {
@@ -20,7 +20,7 @@ function bingMapDirective(angularBingMaps) {
             // Controllers get instantiated before link function is run, so instantiate the map in the Controller
             // so that it is available to child link functions
             var _this = this;
-            angular.element(document).ready(function () {
+            $window.angularBingMapsReady = function() {
                 // Get default mapOptions the user set in config block
                 var mapOptions = angularBingMaps.getDefaultMapOptions();
 
@@ -84,8 +84,8 @@ function bingMapDirective(angularBingMaps) {
                 });
                 $scope.$apply();
                 $scope.$broadcast('abm-v8-ready');
-            });
 
+            };
 
         },
         link: function ($scope, $element) {
