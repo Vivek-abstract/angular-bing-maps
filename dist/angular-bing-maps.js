@@ -687,7 +687,7 @@ function bingMapDirective(angularBingMaps, $window) {
     'use strict';
 
     return {
-        template: '<section><div ng-transclude></div></section>',
+        template: '<div ng-transclude></div>',
         restrict: 'EA',
         transclude: true,
         scope: {
@@ -721,12 +721,9 @@ function bingMapDirective(angularBingMaps, $window) {
                 }
 
                 var $container = $element[0];
-                var $section = $container.querySelector('section');
+                $container.style.display = 'block';
 
-                $section.style.width = mapOptions.width;
-                $section.style.height = mapOptions.height;
-
-                _this.map = new Microsoft.Maps.Map($section, mapOptions);
+                _this.map = new Microsoft.Maps.Map($container, mapOptions);
 
                 var eventHandlers = {};
                 $scope.map = _this.map;
@@ -1270,6 +1267,50 @@ function wktDirective(MapUtils) {
 
 angular.module('angularBingMaps.directives').directive('wkt', wktDirective);
 
+/*global angular, Microsoft */
+
+function angularBingMapsProvider() {
+    'use strict';
+
+    var defaultMapOptions = {};
+
+    var centerBindEvent = 'viewchangeend';
+
+    function setDefaultMapOptions(usersOptions) {
+        defaultMapOptions = usersOptions;
+    }
+
+    function getDefaultMapOptions() {
+        return defaultMapOptions;
+    }
+
+    function bindCenterRealtime(_bindCenterRealtime) {
+        if(_bindCenterRealtime) {
+            centerBindEvent = 'viewchange';
+        } else {
+            centerBindEvent = 'viewchangeend';
+        }
+    }
+
+    function getCenterBindEvent() {
+        return centerBindEvent;
+    }
+
+    return {
+        setDefaultMapOptions: setDefaultMapOptions,
+        bindCenterRealtime: bindCenterRealtime,
+        $get: function() {
+            return {
+                getDefaultMapOptions: getDefaultMapOptions,
+                getCenterBindEvent: getCenterBindEvent
+            };
+        }
+    };
+
+}
+
+angular.module('angularBingMaps.providers').provider('angularBingMaps', angularBingMapsProvider);
+
 /*global angular, Microsoft, DrawingTools, console*/
 
 function mapUtilsService($q) {
@@ -1359,53 +1400,6 @@ function mapUtilsService($q) {
 }
 
 angular.module('angularBingMaps.services').service('MapUtils', mapUtilsService);
-
-/*global angular, Microsoft */
-
-function angularBingMapsProvider() {
-    'use strict';
-
-    var defaultMapOptions = {
-        width: '100vw',
-        height: '100vh'
-    };
-    
-    var centerBindEvent = 'viewchangeend';
-
-    function setDefaultMapOptions(usersOptions) {
-        defaultMapOptions = usersOptions;
-    }
-
-    function getDefaultMapOptions() {
-        return defaultMapOptions;
-    }
-
-    function bindCenterRealtime(_bindCenterRealtime) {
-        if(_bindCenterRealtime) {
-            centerBindEvent = 'viewchange';
-        } else {
-            centerBindEvent = 'viewchangeend';
-        }
-    }
-
-    function getCenterBindEvent() {
-        return centerBindEvent;
-    }
-
-    return {
-        setDefaultMapOptions: setDefaultMapOptions,
-        bindCenterRealtime: bindCenterRealtime,
-        $get: function() {
-            return {
-                getDefaultMapOptions: getDefaultMapOptions,
-                getCenterBindEvent: getCenterBindEvent
-            };
-        }
-    };
-
-}
-
-angular.module('angularBingMaps.providers').provider('angularBingMaps', angularBingMapsProvider);
 
 },{"color":6}],2:[function(require,module,exports){
 /* MIT license */

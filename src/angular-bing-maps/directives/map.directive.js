@@ -4,7 +4,7 @@ function bingMapDirective(angularBingMaps, $window) {
     'use strict';
 
     return {
-        template: '<section><div ng-transclude></div></section>',
+        template: '<div ng-transclude></div>',
         restrict: 'EA',
         transclude: true,
         scope: {
@@ -38,12 +38,9 @@ function bingMapDirective(angularBingMaps, $window) {
                 }
 
                 var $container = $element[0];
-                var $section = $container.querySelector('section');
+                $container.style.display = 'block';
 
-                $section.style.width = mapOptions.width;
-                $section.style.height = mapOptions.height;
-
-                _this.map = new Microsoft.Maps.Map($section, mapOptions);
+                _this.map = new Microsoft.Maps.Map($container, mapOptions);
 
                 var eventHandlers = {};
                 $scope.map = _this.map;
