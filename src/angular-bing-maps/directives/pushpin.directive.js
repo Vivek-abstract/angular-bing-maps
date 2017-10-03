@@ -20,9 +20,12 @@ function pushpinDirective(MapUtils) {
                     var iconFontSize = scope.fontIconSize ? scope.fontIconSize : 30;
                     var iconText = scope.fontIcon;
                     var icon = MapUtils.createFontPushpin(iconText, iconFontSize, iconColor);
+
                     // Trigger the watch on scope.options with new icon
-                    angular.extend(scope.options, icon);
-                    updatePinOptions();
+                    if (scope.options) {
+                        angular.extend(scope.options, icon);
+                        updatePinOptions();
+                    }
                 }
             }
 
