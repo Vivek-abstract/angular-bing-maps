@@ -983,20 +983,11 @@ function pushpinDirective(MapUtils) {
                 scope.pin.setOptions(scope.options);
             }
 
-            updatePosition();
-            mapCtrl.map.entities.push(scope.pin);
+            function updatePinData(pinData) {
+                scope.pin.pushpinData = pinData;
+            }
 
-            scope.$watch('lat', updatePosition);
-            scope.$watch('lng', updatePosition);
-
-            scope.$watch('options', updatePinOptions);
-            updateFontIcon();
-
-            scope.$watch('pushpinData', function (newPushpinData) {
-                scope.pin.pushpinData = newPushpinData;
-            });
-
-            scope.$watch('events', function(events) {
+            function updateEvents(events) {
                 // Loop through each event handler
                 angular.forEach(events, function(usersHandler, eventName) {
                     // If we already created an event handler, remove it
@@ -1016,13 +1007,32 @@ function pushpinDirective(MapUtils) {
 
                     eventHandlers[eventName] = bingMapsHandler;
                 });
+            }
+
+            updatePosition();
+            updateEvents(scope.events);
+            updatePinData(scope.pushpinData);
+            mapCtrl.map.entities.push(scope.pin);
+
+            scope.$watch('lat', updatePosition);
+            scope.$watch('lng', updatePosition);
+
+            scope.$watch('options', updatePinOptions);
+            updateFontIcon();
+
+            scope.$watch('pushpinData', function(newPushpinData) {
+                updatePinData(newPushpinData);
+            });
+
+            scope.$watch('events', function(events) {
+                updateEvents(events);
             });
 
             scope.$watch('fontIcon', updateFontIcon);
             scope.$watch('fontIconSize', updateFontIcon);
 
-            Microsoft.Maps.Events.addHandler(scope.pin, 'dragend', function (e) {
-                var loc = e.entity.getLocation();
+            Microsoft.Maps.Events.addHandler(scope.pin, 'dragend', function(e) {
+                var loc = e.location;
                 scope.lat = loc.latitude;
                 scope.lng = loc.longitude;
                 scope.$apply();

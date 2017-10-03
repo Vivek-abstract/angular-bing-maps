@@ -1,8 +1,9 @@
 <!DOCTYPE HTML>
 <html>
     <head>
-        <script charset="UTF-8" type="text/javascript" src="//www.bing.com/api/maps/mapcontrol?callback=angularBingMapsReady" async defer></script>
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" />
+
+        <script charset="UTF-8" type="text/javascript" src="//www.bing.com/api/maps/mapcontrol?callback=angularBingMapsReady" async defer></script>
         <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.3.12/angular.min.js"></script>
 
         <script src="../dist/angular-bing-maps.js"></script>
@@ -19,7 +20,6 @@
                 $scope.mapOptions = {};
                 $scope.mapOptions.center = {latitude: 30.614919,longitude: -96.342316};
                 $scope.mapOptions.zoom = 6;
-                $scope.mapOptions.mapType = 'a';
 
                 /*<pushpin> directive options*/
                 $scope.pushpin = {};
