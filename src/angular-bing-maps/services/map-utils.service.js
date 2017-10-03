@@ -1,6 +1,6 @@
 /*global angular, Microsoft, DrawingTools, console*/
 
-function mapUtilsService($q) {
+function mapUtilsService($q, angularBingMaps) {
     'use strict';
     var color = require('color');
     var advancedShapesLoaded = false;
@@ -76,12 +76,40 @@ function mapUtilsService($q) {
         return defered.promise;
     }
 
+    function createFontPushpin(text, fontSizePx, color) {
+        var c = document.createElement('canvas');
+        var ctx = c.getContext('2d');
+
+        //Define font style
+        var font = fontSizePx + 'px ' + angularBingMaps.getIconFontFamily();
+        ctx.font = font;
+
+        //Resize canvas based on sie of text.
+        var icon = String.fromCharCode(parseInt(text, 16));
+        var size = ctx.measureText(icon);
+        c.width = size.width;
+        c.height = fontSizePx;
+
+        //Reset font as it will be cleared by the resize.
+        ctx.font = font;
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = color;
+
+        ctx.fillText(icon, 0, 0);
+
+        return {
+            icon: c.toDataURL(),
+            anchor: new Microsoft.Maps.Point(c.width / 2, c.height)
+        };
+    }
+
     return {
         makeMicrosoftColor: makeMicrosoftColor,
         makeMicrosoftLatLng: makeMicrosoftLatLng,
         convertToMicrosoftLatLngs: convertToMicrosoftLatLngs,
         flattenEntityCollection: flattenEntityCollection,
-        loadAdvancedShapesModule: loadAdvancedShapesModule
+        loadAdvancedShapesModule: loadAdvancedShapesModule,
+        createFontPushpin: createFontPushpin
     };
 
 }

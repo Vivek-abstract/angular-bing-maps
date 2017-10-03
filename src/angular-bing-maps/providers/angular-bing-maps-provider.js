@@ -7,6 +7,8 @@ function angularBingMapsProvider() {
 
     var centerBindEvent = 'viewchangeend';
 
+    var iconFontFamily = 'Arial';
+
     function setDefaultMapOptions(usersOptions) {
         defaultMapOptions = usersOptions;
     }
@@ -27,13 +29,22 @@ function angularBingMapsProvider() {
         return centerBindEvent;
     }
 
+    function setIconFontFamily(family) {
+        iconFontFamily = family;
+    }
+    function getIconFontFamily() {
+        return iconFontFamily;
+    }
+
     return {
         setDefaultMapOptions: setDefaultMapOptions,
         bindCenterRealtime: bindCenterRealtime,
+        setIconFontFamily: setIconFontFamily,
         $get: function() {
             return {
                 getDefaultMapOptions: getDefaultMapOptions,
-                getCenterBindEvent: getCenterBindEvent
+                getCenterBindEvent: getCenterBindEvent,
+                getIconFontFamily: getIconFontFamily
             };
         }
     };

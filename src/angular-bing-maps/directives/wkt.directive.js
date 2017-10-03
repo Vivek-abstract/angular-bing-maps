@@ -53,8 +53,8 @@ function wktDirective(MapUtils) {
             function setOptions() {
                 //Entity not parsed yet
                 if (!entity) { return; }
-
                 var options = {};
+
                 if (scope.fillColor) {
                     options.fillColor = MapUtils.makeMicrosoftColor(scope.fillColor);
                 }
@@ -63,9 +63,9 @@ function wktDirective(MapUtils) {
                     options.strokeColor = MapUtils.makeMicrosoftColor(scope.strokeColor);
                 }
 
-                if (entity instanceof Microsoft.Maps.EntityCollection) {
+                if (entity instanceof Array) {
                     for (var i = 0; i < entity.getLength(); i++) {
-                        if (entity.get(i) instanceof Microsoft.Maps.Polygon) {
+                        if (entity.get(i) instanceof Microsoft.Maps.Polygon || entity.get(i) instanceof Microsoft.Maps.Polyline) {
                             entity.get(i).setOptions(options);
                         }
                     }

@@ -1,6 +1,6 @@
 /*global angular, Microsoft, DrawingTools, console*/
 
-function pushpinDirective() {
+function pushpinDirective(MapUtils) {
     'use strict';
 
     function link(scope, element, attrs, mapCtrl) {
@@ -14,19 +14,34 @@ function pushpinDirective() {
                 }
             }
 
+            function updateFontIcon() {
+                if (scope.fontIcon) {
+                    var iconColor = scope.options ? scope.options.color : '#000';
+                    var iconFontSize = scope.fontIconSize ? scope.fontIconSize : 30;
+                    var iconText = scope.fontIcon;
+                    var icon = MapUtils.createFontPushpin(iconText, iconFontSize, iconColor);
+                    // Trigger the watch on scope.options with new icon
+                    angular.extend(scope.options, icon);
+                    updatePinOptions();
+                }
+            }
+
+            function updatePinOptions() {
+                if (scope.options === undefined) {
+                    return;
+                }
+
+                scope.pin.setOptions(scope.options);
+            }
+
             updatePosition();
             mapCtrl.map.entities.push(scope.pin);
 
             scope.$watch('lat', updatePosition);
             scope.$watch('lng', updatePosition);
 
-            scope.$watch('options', function (newOptions) {
-                if (newOptions === undefined) {
-                    return;
-                }
-
-                scope.pin.setOptions(newOptions);
-            });
+            scope.$watch('options', updatePinOptions);
+            updateFontIcon();
 
             scope.$watch('pushpinData', function (newPushpinData) {
                 scope.pin.pushpinData = newPushpinData;
@@ -53,6 +68,9 @@ function pushpinDirective() {
                     eventHandlers[eventName] = bingMapsHandler;
                 });
             });
+
+            scope.$watch('fontIcon', updateFontIcon);
+            scope.$watch('fontIconSize', updateFontIcon);
 
             Microsoft.Maps.Events.addHandler(scope.pin, 'dragend', function (e) {
                 var loc = e.entity.getLocation();
@@ -97,7 +115,9 @@ function pushpinDirective() {
             lng: '=',
             events: '=?',
             trackBy: '=?',
-            pushpinData: '=?'
+            pushpinData: '=?',
+            fontIcon: '=?',
+            fontIconSize: '=?'
         },
         require: '^bingMap'
     };

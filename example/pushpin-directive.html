@@ -2,6 +2,7 @@
 <html>
     <head>
         <script charset="UTF-8" type="text/javascript" src="//www.bing.com/api/maps/mapcontrol?callback=angularBingMapsReady" async defer></script>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" />
         <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.3.12/angular.min.js"></script>
 
         <script src="../dist/angular-bing-maps.js"></script>
@@ -9,7 +10,10 @@
         <script type="text/javascript">
 
             var app = angular.module('angularBingMapExample', ['angularBingMaps']);
-            app.controller('ExampleController', ['$scope', '$http', function($scope, $http) {
+            app.config(['angularBingMapsProvider', function(angularBingMaps) {
+                angularBingMaps.setIconFontFamily('FontAwesome');
+            }])
+            app.controller('ExampleController', ['$scope', '$http', 'MapUtils', '$timeout', function($scope, $http, MapUtils, $timeout) {
 
                 /*<bing-map> directive options*/
                 $scope.mapOptions = {};
@@ -21,7 +25,8 @@
                 $scope.pushpin = {};
                 $scope.pushpin.location = {latitude: 30.614919,longitude: -96.342316};
                 $scope.pushpin.options = {
-                    draggable: true
+                    draggable: true,
+                    color: '#834f5d'
                 }
                 $scope.pushpin.data= {
                     text: 'Hello World!'
@@ -57,7 +62,8 @@
                     lng="pushpin.location.longitude"
                     options="pushpin.options"
                     events="pushpin.events",
-                    pushpin-data="pushpin.data">
+                    pushpin-data="pushpin.data"
+                    font-icon="'f041'">
                 </pushpin>
 
             </bing-map>

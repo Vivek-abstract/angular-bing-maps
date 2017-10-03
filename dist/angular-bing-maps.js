@@ -4,8 +4,9 @@ drawingToolsDirective.$inject = ['MapUtils'];
 bingMapDirective.$inject = ['angularBingMaps', '$window'];
 polygonDirective.$inject = ['MapUtils'];
 polylineDirective.$inject = ['MapUtils'];
+pushpinDirective.$inject = ['MapUtils'];
 wktDirective.$inject = ['MapUtils'];
-mapUtilsService.$inject = ['$q'];(function () {
+mapUtilsService.$inject = ['$q', 'angularBingMaps'];(function () {
 
   // Create all modules and define dependencies to make sure they exist
   // and are loaded in the correct order to satisfy dependency injection
@@ -948,7 +949,7 @@ angular.module('angularBingMaps.directives').directive('polyline', polylineDirec
 
 /*global angular, Microsoft, DrawingTools, console*/
 
-function pushpinDirective() {
+function pushpinDirective(MapUtils) {
     'use strict';
 
     function link(scope, element, attrs, mapCtrl) {
@@ -962,19 +963,34 @@ function pushpinDirective() {
                 }
             }
 
+            function updateFontIcon() {
+                if (scope.fontIcon) {
+                    var iconColor = scope.options ? scope.options.color : '#000';
+                    var iconFontSize = scope.fontIconSize ? scope.fontIconSize : 30;
+                    var iconText = scope.fontIcon;
+                    var icon = MapUtils.createFontPushpin(iconText, iconFontSize, iconColor);
+                    // Trigger the watch on scope.options with new icon
+                    angular.extend(scope.options, icon);
+                    updatePinOptions();
+                }
+            }
+
+            function updatePinOptions() {
+                if (scope.options === undefined) {
+                    return;
+                }
+
+                scope.pin.setOptions(scope.options);
+            }
+
             updatePosition();
             mapCtrl.map.entities.push(scope.pin);
 
             scope.$watch('lat', updatePosition);
             scope.$watch('lng', updatePosition);
 
-            scope.$watch('options', function (newOptions) {
-                if (newOptions === undefined) {
-                    return;
-                }
-
-                scope.pin.setOptions(newOptions);
-            });
+            scope.$watch('options', updatePinOptions);
+            updateFontIcon();
 
             scope.$watch('pushpinData', function (newPushpinData) {
                 scope.pin.pushpinData = newPushpinData;
@@ -1001,6 +1017,9 @@ function pushpinDirective() {
                     eventHandlers[eventName] = bingMapsHandler;
                 });
             });
+
+            scope.$watch('fontIcon', updateFontIcon);
+            scope.$watch('fontIconSize', updateFontIcon);
 
             Microsoft.Maps.Events.addHandler(scope.pin, 'dragend', function (e) {
                 var loc = e.entity.getLocation();
@@ -1045,7 +1064,9 @@ function pushpinDirective() {
             lng: '=',
             events: '=?',
             trackBy: '=?',
-            pushpinData: '=?'
+            pushpinData: '=?',
+            fontIcon: '=?',
+            fontIconSize: '=?'
         },
         require: '^bingMap'
     };
@@ -1185,8 +1206,8 @@ function wktDirective(MapUtils) {
             function setOptions() {
                 //Entity not parsed yet
                 if (!entity) { return; }
-
                 var options = {};
+
                 if (scope.fillColor) {
                     options.fillColor = MapUtils.makeMicrosoftColor(scope.fillColor);
                 }
@@ -1195,9 +1216,9 @@ function wktDirective(MapUtils) {
                     options.strokeColor = MapUtils.makeMicrosoftColor(scope.strokeColor);
                 }
 
-                if (entity instanceof Microsoft.Maps.EntityCollection) {
+                if (entity instanceof Array) {
                     for (var i = 0; i < entity.getLength(); i++) {
-                        if (entity.get(i) instanceof Microsoft.Maps.Polygon) {
+                        if (entity.get(i) instanceof Microsoft.Maps.Polygon || entity.get(i) instanceof Microsoft.Maps.Polyline) {
                             entity.get(i).setOptions(options);
                         }
                     }
@@ -1276,6 +1297,8 @@ function angularBingMapsProvider() {
 
     var centerBindEvent = 'viewchangeend';
 
+    var iconFontFamily = 'Arial';
+
     function setDefaultMapOptions(usersOptions) {
         defaultMapOptions = usersOptions;
     }
@@ -1296,13 +1319,22 @@ function angularBingMapsProvider() {
         return centerBindEvent;
     }
 
+    function setIconFontFamily(family) {
+        iconFontFamily = family;
+    }
+    function getIconFontFamily() {
+        return iconFontFamily;
+    }
+
     return {
         setDefaultMapOptions: setDefaultMapOptions,
         bindCenterRealtime: bindCenterRealtime,
+        setIconFontFamily: setIconFontFamily,
         $get: function() {
             return {
                 getDefaultMapOptions: getDefaultMapOptions,
-                getCenterBindEvent: getCenterBindEvent
+                getCenterBindEvent: getCenterBindEvent,
+                getIconFontFamily: getIconFontFamily
             };
         }
     };
@@ -1313,7 +1345,7 @@ angular.module('angularBingMaps.providers').provider('angularBingMaps', angularB
 
 /*global angular, Microsoft, DrawingTools, console*/
 
-function mapUtilsService($q) {
+function mapUtilsService($q, angularBingMaps) {
     'use strict';
     var color = require('color');
     var advancedShapesLoaded = false;
@@ -1389,12 +1421,40 @@ function mapUtilsService($q) {
         return defered.promise;
     }
 
+    function createFontPushpin(text, fontSizePx, color) {
+        var c = document.createElement('canvas');
+        var ctx = c.getContext('2d');
+
+        //Define font style
+        var font = fontSizePx + 'px ' + angularBingMaps.getIconFontFamily();
+        ctx.font = font;
+
+        //Resize canvas based on sie of text.
+        var icon = String.fromCharCode(parseInt(text, 16));
+        var size = ctx.measureText(icon);
+        c.width = size.width;
+        c.height = fontSizePx;
+
+        //Reset font as it will be cleared by the resize.
+        ctx.font = font;
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = color;
+
+        ctx.fillText(icon, 0, 0);
+
+        return {
+            icon: c.toDataURL(),
+            anchor: new Microsoft.Maps.Point(c.width / 2, c.height)
+        };
+    }
+
     return {
         makeMicrosoftColor: makeMicrosoftColor,
         makeMicrosoftLatLng: makeMicrosoftLatLng,
         convertToMicrosoftLatLngs: convertToMicrosoftLatLngs,
         flattenEntityCollection: flattenEntityCollection,
-        loadAdvancedShapesModule: loadAdvancedShapesModule
+        loadAdvancedShapesModule: loadAdvancedShapesModule,
+        createFontPushpin: createFontPushpin
     };
 
 }
