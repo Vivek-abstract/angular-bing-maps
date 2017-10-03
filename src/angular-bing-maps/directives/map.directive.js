@@ -1,6 +1,6 @@
 /*global angular, Microsoft*/
 
-function bingMapDirective(angularBingMaps, $window) {
+function bingMapDirective(angularBingMaps, $window, MapUtils) {
     'use strict';
 
     return {
@@ -79,9 +79,9 @@ function bingMapDirective(angularBingMaps, $window) {
                         eventHandlers[eventName] = bingMapsHandler;
                     });
                 });
+                MapUtils._executeOnBingMapsReadyCallbacks();
                 $scope.$apply();
                 $scope.$broadcast('abm-v8-ready');
-
             };
 
         },

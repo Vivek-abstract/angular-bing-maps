@@ -4,6 +4,8 @@ function mapUtilsService($q, angularBingMaps) {
     'use strict';
     var color = require('color');
     var advancedShapesLoaded = false;
+    var isBingMapsLoaded = false;
+    var bingMapsOnLoadCallbacks = [];
 
     function makeMicrosoftColor(colorStr) {
         var c = color(colorStr);
@@ -103,13 +105,31 @@ function mapUtilsService($q, angularBingMaps) {
         };
     }
 
+    function onBingMapsReady(callback) {
+        if (isBingMapsLoaded) {
+            callback();
+        } else {
+            bingMapsOnLoadCallbacks.push(callback);
+        }
+    }
+
+    function _executeOnBingMapsReadyCallbacks() {
+        isBingMapsLoaded = true;
+        for (var i=0; i<bingMapsOnLoadCallbacks.length; i++) {
+            bingMapsOnLoadCallbacks[i]();
+        }
+        bingMapsOnLoadCallbacks = null;
+    }
+
     return {
         makeMicrosoftColor: makeMicrosoftColor,
         makeMicrosoftLatLng: makeMicrosoftLatLng,
         convertToMicrosoftLatLngs: convertToMicrosoftLatLngs,
         flattenEntityCollection: flattenEntityCollection,
         loadAdvancedShapesModule: loadAdvancedShapesModule,
-        createFontPushpin: createFontPushpin
+        createFontPushpin: createFontPushpin,
+        onBingMapsReady: onBingMapsReady,
+        _executeOnBingMapsReadyCallbacks: _executeOnBingMapsReadyCallbacks
     };
 
 }

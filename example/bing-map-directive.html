@@ -18,8 +18,8 @@
                     height: '320px'
                 });
             }]);
-            
-            app.controller('ExampleController', ['$scope', '$http', '$timeout', function($scope, $http, $timeout) {
+
+            app.controller('ExampleController', ['$scope', '$http', '$timeout', 'MapUtils', function($scope, $http, $timeout, MapUtils) {
                 /*<bing-map> directive options*/
             	$scope.mapOptions = {
             		center: {latitude: 30.614919, longitude: -96.342316},
@@ -35,6 +35,10 @@
                     //This will return (0,0) because we havn't set the center yet
                     console.log('Map loaded with center:' + map.getCenter());
                 }
+
+                MapUtils.onBingMapsReady(function() {
+                    console.log('Microsoft.Maps will no longer throw errors now');
+                });
             }]);
         </script>
 

@@ -1,7 +1,7 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 
 drawingToolsDirective.$inject = ['MapUtils'];
-bingMapDirective.$inject = ['angularBingMaps', '$window'];
+bingMapDirective.$inject = ['angularBingMaps', '$window', 'MapUtils'];
 polygonDirective.$inject = ['MapUtils'];
 polylineDirective.$inject = ['MapUtils'];
 pushpinDirective.$inject = ['MapUtils'];
@@ -684,7 +684,7 @@ angular.module('angularBingMaps.directives').directive('infoBox', infoBoxDirecti
 
 /*global angular, Microsoft*/
 
-function bingMapDirective(angularBingMaps, $window) {
+function bingMapDirective(angularBingMaps, $window, MapUtils) {
     'use strict';
 
     return {
@@ -763,9 +763,9 @@ function bingMapDirective(angularBingMaps, $window) {
                         eventHandlers[eventName] = bingMapsHandler;
                     });
                 });
+                MapUtils._executeOnBingMapsReadyCallbacks();
                 $scope.$apply();
                 $scope.$broadcast('abm-v8-ready');
-
             };
 
         }],
@@ -1349,6 +1349,8 @@ function mapUtilsService($q, angularBingMaps) {
     'use strict';
     var color = require('color');
     var advancedShapesLoaded = false;
+    var isBingMapsLoaded = false;
+    var bingMapsOnLoadCallbacks = [];
 
     function makeMicrosoftColor(colorStr) {
         var c = color(colorStr);
@@ -1448,13 +1450,31 @@ function mapUtilsService($q, angularBingMaps) {
         };
     }
 
+    function onBingMapsReady(callback) {
+        if (isBingMapsLoaded) {
+            callback();
+        } else {
+            bingMapsOnLoadCallbacks.push(callback);
+        }
+    }
+
+    function _executeOnBingMapsReadyCallbacks() {
+        isBingMapsLoaded = true;
+        for (var i=0; i<bingMapsOnLoadCallbacks.length; i++) {
+            bingMapsOnLoadCallbacks[i]();
+        }
+        bingMapsOnLoadCallbacks = null;
+    }
+
     return {
         makeMicrosoftColor: makeMicrosoftColor,
         makeMicrosoftLatLng: makeMicrosoftLatLng,
         convertToMicrosoftLatLngs: convertToMicrosoftLatLngs,
         flattenEntityCollection: flattenEntityCollection,
         loadAdvancedShapesModule: loadAdvancedShapesModule,
-        createFontPushpin: createFontPushpin
+        createFontPushpin: createFontPushpin,
+        onBingMapsReady: onBingMapsReady,
+        _executeOnBingMapsReadyCallbacks: _executeOnBingMapsReadyCallbacks
     };
 
 }
