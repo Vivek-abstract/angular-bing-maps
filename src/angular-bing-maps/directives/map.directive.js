@@ -111,6 +111,7 @@ function bingMapDirective(angularBingMaps, $window, MapUtils) {
                 while(bingMapsReadyCallbacks.length) {
                     bingMapsReadyCallbacks.pop()();
                 }
+                isBingMapsLoaded = true;
             };
 
         },

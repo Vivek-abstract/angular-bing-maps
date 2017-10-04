@@ -1,12 +1,12 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 
+mapUtilsService.$inject = ['$q', 'angularBingMaps'];
 drawingToolsDirective.$inject = ['MapUtils'];
 bingMapDirective.$inject = ['angularBingMaps', '$window', 'MapUtils'];
 polygonDirective.$inject = ['MapUtils'];
 polylineDirective.$inject = ['MapUtils'];
 pushpinDirective.$inject = ['MapUtils'];
-wktDirective.$inject = ['MapUtils'];
-mapUtilsService.$inject = ['$q', 'angularBingMaps'];(function () {
+wktDirective.$inject = ['MapUtils'];(function () {
 
   // Create all modules and define dependencies to make sure they exist
   // and are loaded in the correct order to satisfy dependency injection
@@ -33,6 +33,199 @@ mapUtilsService.$inject = ['$q', 'angularBingMaps'];(function () {
       ]);
 
 })();
+
+/*global angular, Microsoft */
+
+function angularBingMapsProvider() {
+    'use strict';
+
+    var defaultMapOptions = {};
+
+    var centerBindEvent = 'viewchangeend';
+
+    var iconFontFamily = 'Arial';
+
+    function setDefaultMapOptions(usersOptions) {
+        defaultMapOptions = usersOptions;
+    }
+
+    function getDefaultMapOptions() {
+        return defaultMapOptions;
+    }
+
+    function bindCenterRealtime(_bindCenterRealtime) {
+        if(_bindCenterRealtime) {
+            centerBindEvent = 'viewchange';
+        } else {
+            centerBindEvent = 'viewchangeend';
+        }
+    }
+
+    function getCenterBindEvent() {
+        return centerBindEvent;
+    }
+
+    function setIconFontFamily(family) {
+        iconFontFamily = family;
+    }
+    function getIconFontFamily() {
+        return iconFontFamily;
+    }
+
+    return {
+        setDefaultMapOptions: setDefaultMapOptions,
+        bindCenterRealtime: bindCenterRealtime,
+        setIconFontFamily: setIconFontFamily,
+        $get: function() {
+            return {
+                getDefaultMapOptions: getDefaultMapOptions,
+                getCenterBindEvent: getCenterBindEvent,
+                getIconFontFamily: getIconFontFamily
+            };
+        }
+    };
+
+}
+
+angular.module('angularBingMaps.providers').provider('angularBingMaps', angularBingMapsProvider);
+
+/*global angular, Microsoft, DrawingTools, console*/
+
+function mapUtilsService($q, angularBingMaps) {
+    'use strict';
+    var color = require('color');
+    var advancedShapesLoaded = false;
+    var isBingMapsLoaded = false;
+    var bingMapsOnLoadCallbacks = [];
+
+    function makeMicrosoftColor(colorStr) {
+        var c = color(colorStr);
+        return new Microsoft.Maps.Color(Math.floor(255*c.alpha()), c.red(), c.green(), c.blue());
+    }
+
+    function makeMicrosoftLatLng(location) {
+        if (angular.isArray(location)) {
+            return new Microsoft.Maps.Location(location[1], location[0]);
+        } else if (location.hasOwnProperty('latitude') && location.hasOwnProperty('longitude')) {
+            return new Microsoft.Maps.Location(location.latitude, location.longitude);
+        } else if (location.hasOwnProperty('lat') && location.hasOwnProperty('lng')) {
+            return new Microsoft.Maps.Location(location.lat, location.lng);
+        } else {
+            if(console && console.error) {
+                console.error('Your coordinates are in a non-standard form. '+
+                              'Please refer to the Angular Bing Maps '+
+                              'documentation to see supported coordinate formats');
+            }
+            return null;
+        }
+    }
+
+    function convertToMicrosoftLatLngs(locations) {
+        var bingLocations = [];
+        if (!locations) {
+            return bingLocations;
+        }
+        for (var i=0;i<locations.length;i++) {
+            var latLng = makeMicrosoftLatLng(locations[i]);
+            bingLocations.push(latLng);
+        }
+        return bingLocations;
+    }
+
+    function flattenEntityCollection(ec) {
+        var flat = flattenEntityCollectionRecursive(ec);
+        var flatEc = new Microsoft.Maps.EntityCollection();
+        var entity = flat.pop();
+        while(entity) {
+            flatEc.push(entity);
+            entity = flat.pop();
+        }
+        return flatEc;
+    }
+
+    function flattenEntityCollectionRecursive(ec) {
+        var flat = [];
+        var entity = ec.pop();
+        while(entity) {
+            if (entity && !(entity instanceof Microsoft.Maps.EntityCollection)) {
+                flat.push(entity);
+            } else if (entity) {
+                flat.concat(flattenEntityCollectionRecursive(entity));
+            }
+            entity = ec.pop();
+        }
+        return flat;
+    }
+
+    function loadAdvancedShapesModule() {
+        var defered = $q.defer();
+        if(!advancedShapesLoaded) {
+            Microsoft.Maps.loadModule('Microsoft.Maps.AdvancedShapes', { callback: function(){
+                defered.resolve();
+            }});
+        } else {
+            defered.resolve();
+        }
+        return defered.promise;
+    }
+
+    function createFontPushpin(text, fontSizePx, color) {
+        var c = document.createElement('canvas');
+        var ctx = c.getContext('2d');
+
+        //Define font style
+        var font = fontSizePx + 'px ' + angularBingMaps.getIconFontFamily();
+        ctx.font = font;
+
+        //Resize canvas based on sie of text.
+        var icon = String.fromCharCode(parseInt(text, 16));
+        var size = ctx.measureText(icon);
+        c.width = size.width;
+        c.height = fontSizePx;
+
+        //Reset font as it will be cleared by the resize.
+        ctx.font = font;
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = color;
+
+        ctx.fillText(icon, 0, 0);
+
+        return {
+            icon: c.toDataURL(),
+            anchor: new Microsoft.Maps.Point(c.width / 2, c.height)
+        };
+    }
+
+    function onBingMapsReady(callback) {
+        if (isBingMapsLoaded) {
+            callback();
+        } else {
+            bingMapsOnLoadCallbacks.push(callback);
+        }
+    }
+
+    function _executeOnBingMapsReadyCallbacks() {
+        isBingMapsLoaded = true;
+        for (var i=0; i<bingMapsOnLoadCallbacks.length; i++) {
+            bingMapsOnLoadCallbacks[i]();
+        }
+        bingMapsOnLoadCallbacks = null;
+    }
+
+    return {
+        makeMicrosoftColor: makeMicrosoftColor,
+        makeMicrosoftLatLng: makeMicrosoftLatLng,
+        convertToMicrosoftLatLngs: convertToMicrosoftLatLngs,
+        flattenEntityCollection: flattenEntityCollection,
+        loadAdvancedShapesModule: loadAdvancedShapesModule,
+        createFontPushpin: createFontPushpin,
+        onBingMapsReady: onBingMapsReady,
+        _executeOnBingMapsReadyCallbacks: _executeOnBingMapsReadyCallbacks
+    };
+
+}
+
+angular.module('angularBingMaps.services').service('MapUtils', mapUtilsService);
 
 /*global angular, Microsoft, DrawingTools, console*/
 
@@ -793,6 +986,7 @@ function bingMapDirective(angularBingMaps, $window, MapUtils) {
                 while(bingMapsReadyCallbacks.length) {
                     bingMapsReadyCallbacks.pop()();
                 }
+                isBingMapsLoaded = true;
             };
 
         }],
@@ -1332,199 +1526,6 @@ function wktDirective(MapUtils) {
 }
 
 angular.module('angularBingMaps.directives').directive('wkt', wktDirective);
-
-/*global angular, Microsoft */
-
-function angularBingMapsProvider() {
-    'use strict';
-
-    var defaultMapOptions = {};
-
-    var centerBindEvent = 'viewchangeend';
-
-    var iconFontFamily = 'Arial';
-
-    function setDefaultMapOptions(usersOptions) {
-        defaultMapOptions = usersOptions;
-    }
-
-    function getDefaultMapOptions() {
-        return defaultMapOptions;
-    }
-
-    function bindCenterRealtime(_bindCenterRealtime) {
-        if(_bindCenterRealtime) {
-            centerBindEvent = 'viewchange';
-        } else {
-            centerBindEvent = 'viewchangeend';
-        }
-    }
-
-    function getCenterBindEvent() {
-        return centerBindEvent;
-    }
-
-    function setIconFontFamily(family) {
-        iconFontFamily = family;
-    }
-    function getIconFontFamily() {
-        return iconFontFamily;
-    }
-
-    return {
-        setDefaultMapOptions: setDefaultMapOptions,
-        bindCenterRealtime: bindCenterRealtime,
-        setIconFontFamily: setIconFontFamily,
-        $get: function() {
-            return {
-                getDefaultMapOptions: getDefaultMapOptions,
-                getCenterBindEvent: getCenterBindEvent,
-                getIconFontFamily: getIconFontFamily
-            };
-        }
-    };
-
-}
-
-angular.module('angularBingMaps.providers').provider('angularBingMaps', angularBingMapsProvider);
-
-/*global angular, Microsoft, DrawingTools, console*/
-
-function mapUtilsService($q, angularBingMaps) {
-    'use strict';
-    var color = require('color');
-    var advancedShapesLoaded = false;
-    var isBingMapsLoaded = false;
-    var bingMapsOnLoadCallbacks = [];
-
-    function makeMicrosoftColor(colorStr) {
-        var c = color(colorStr);
-        return new Microsoft.Maps.Color(Math.floor(255*c.alpha()), c.red(), c.green(), c.blue());
-    }
-
-    function makeMicrosoftLatLng(location) {
-        if (angular.isArray(location)) {
-            return new Microsoft.Maps.Location(location[1], location[0]);
-        } else if (location.hasOwnProperty('latitude') && location.hasOwnProperty('longitude')) {
-            return new Microsoft.Maps.Location(location.latitude, location.longitude);
-        } else if (location.hasOwnProperty('lat') && location.hasOwnProperty('lng')) {
-            return new Microsoft.Maps.Location(location.lat, location.lng);
-        } else {
-            if(console && console.error) {
-                console.error('Your coordinates are in a non-standard form. '+
-                              'Please refer to the Angular Bing Maps '+
-                              'documentation to see supported coordinate formats');
-            }
-            return null;
-        }
-    }
-
-    function convertToMicrosoftLatLngs(locations) {
-        var bingLocations = [];
-        if (!locations) {
-            return bingLocations;
-        }
-        for (var i=0;i<locations.length;i++) {
-            var latLng = makeMicrosoftLatLng(locations[i]);
-            bingLocations.push(latLng);
-        }
-        return bingLocations;
-    }
-
-    function flattenEntityCollection(ec) {
-        var flat = flattenEntityCollectionRecursive(ec);
-        var flatEc = new Microsoft.Maps.EntityCollection();
-        var entity = flat.pop();
-        while(entity) {
-            flatEc.push(entity);
-            entity = flat.pop();
-        }
-        return flatEc;
-    }
-
-    function flattenEntityCollectionRecursive(ec) {
-        var flat = [];
-        var entity = ec.pop();
-        while(entity) {
-            if (entity && !(entity instanceof Microsoft.Maps.EntityCollection)) {
-                flat.push(entity);
-            } else if (entity) {
-                flat.concat(flattenEntityCollectionRecursive(entity));
-            }
-            entity = ec.pop();
-        }
-        return flat;
-    }
-
-    function loadAdvancedShapesModule() {
-        var defered = $q.defer();
-        if(!advancedShapesLoaded) {
-            Microsoft.Maps.loadModule('Microsoft.Maps.AdvancedShapes', { callback: function(){
-                defered.resolve();
-            }});
-        } else {
-            defered.resolve();
-        }
-        return defered.promise;
-    }
-
-    function createFontPushpin(text, fontSizePx, color) {
-        var c = document.createElement('canvas');
-        var ctx = c.getContext('2d');
-
-        //Define font style
-        var font = fontSizePx + 'px ' + angularBingMaps.getIconFontFamily();
-        ctx.font = font;
-
-        //Resize canvas based on sie of text.
-        var icon = String.fromCharCode(parseInt(text, 16));
-        var size = ctx.measureText(icon);
-        c.width = size.width;
-        c.height = fontSizePx;
-
-        //Reset font as it will be cleared by the resize.
-        ctx.font = font;
-        ctx.textBaseline = 'top';
-        ctx.fillStyle = color;
-
-        ctx.fillText(icon, 0, 0);
-
-        return {
-            icon: c.toDataURL(),
-            anchor: new Microsoft.Maps.Point(c.width / 2, c.height)
-        };
-    }
-
-    function onBingMapsReady(callback) {
-        if (isBingMapsLoaded) {
-            callback();
-        } else {
-            bingMapsOnLoadCallbacks.push(callback);
-        }
-    }
-
-    function _executeOnBingMapsReadyCallbacks() {
-        isBingMapsLoaded = true;
-        for (var i=0; i<bingMapsOnLoadCallbacks.length; i++) {
-            bingMapsOnLoadCallbacks[i]();
-        }
-        bingMapsOnLoadCallbacks = null;
-    }
-
-    return {
-        makeMicrosoftColor: makeMicrosoftColor,
-        makeMicrosoftLatLng: makeMicrosoftLatLng,
-        convertToMicrosoftLatLngs: convertToMicrosoftLatLngs,
-        flattenEntityCollection: flattenEntityCollection,
-        loadAdvancedShapesModule: loadAdvancedShapesModule,
-        createFontPushpin: createFontPushpin,
-        onBingMapsReady: onBingMapsReady,
-        _executeOnBingMapsReadyCallbacks: _executeOnBingMapsReadyCallbacks
-    };
-
-}
-
-angular.module('angularBingMaps.services').service('MapUtils', mapUtilsService);
 
 },{"color":6}],2:[function(require,module,exports){
 /* MIT license */
