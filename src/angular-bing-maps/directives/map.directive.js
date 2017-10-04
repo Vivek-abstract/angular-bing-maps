@@ -23,7 +23,7 @@ function bingMapDirective(angularBingMaps, $window, MapUtils) {
             var isBingMapsLoaded = false;
             var bingMapsReadyCallbacks = [];
             _this.onBingMapsReady = function(callback) {
-                if (_this.isBingMapsLoaded) {
+                if (isBingMapsLoaded) {
                     callback();
                 } else {
                     bingMapsReadyCallbacks.push(callback);
