@@ -40,7 +40,7 @@ function drawingToolsDirective(MapUtils) {
     'use strict';
 
     function link(scope, element, attrs, mapCtrl) {
-        scope.$on('abm-v8-ready', function() {
+        mapCtrl.onBingMapsReady(function() {
 
             Microsoft.Maps.loadModule(['Microsoft.Maps.DrawingTools', 'Microsoft.Maps.SpatialMath'], function () {
                 init();
@@ -542,7 +542,7 @@ function geoJsonDirective() {
     'use strict';
 
     function link(scope, element, attrs, mapCtrl) {
-        scope.$on('abm-v8-ready', function() {
+        mapCtrl.onBingMapsReady(function() {
 
             Microsoft.Maps.loadModule(['Microsoft.Maps.GeoJson', 'Microsoft.Maps.AdvancedShapes'], function () {
                 init();
@@ -598,13 +598,13 @@ function infoBoxDirective() {
     'use strict';
 
     function link(scope, element, attrs, ctrls) {
-        scope.$on('abm-v8-ready', function() {
+        var mapCtrl = ctrls[0];
+        var pushpinCtrl = ctrls[1];
+        mapCtrl.onBingMapsReady(function() {
 
-            var provider = ctrls[0];
-            var pushpinCtrl = ctrls[1];
             var infobox = new Microsoft.Maps.Infobox(new Microsoft.Maps.Location(0.0 , 0.0));
 
-            infobox.setMap(provider.map);
+            infobox.setMap(mapCtrl.map);
 
             function updateLocation() {
                 //Ensure lat and lng are defined first
@@ -643,8 +643,6 @@ function infoBoxDirective() {
             if (!pushpinCtrl) {
                 scope.$watch('lat', updateLocation);
                 scope.$watch('lng', updateLocation);
-            } else {
-                infobox.setLocation(pushpinCtrl.pin.getLocation());
             }
 
             scope.$watch('options', updateOptions);
@@ -704,6 +702,16 @@ function bingMapDirective(angularBingMaps, $window, MapUtils) {
             // Controllers get instantiated before link function is run, so instantiate the map in the Controller
             // so that it is available to child link functions
             var _this = this;
+            var isBingMapsLoaded = false;
+            var bingMapsReadyCallbacks = [];
+            _this.onBingMapsReady = function(callback) {
+                if (_this.isBingMapsLoaded) {
+                    callback();
+                } else {
+                    bingMapsReadyCallbacks.push(callback);
+                }
+            };
+
             $window.angularBingMapsReady = function() {
                 // Get default mapOptions the user set in config block
                 var mapOptions = angularBingMaps.getDefaultMapOptions();
@@ -728,6 +736,22 @@ function bingMapDirective(angularBingMaps, $window, MapUtils) {
 
                 var eventHandlers = {};
                 $scope.map = _this.map;
+
+                /*
+                    Since Bing Maps fires view change events as soon as the map loads, we have to wait until after the
+                    initial viewchange event has completed before we bind to $scope.center. Otherwise the user's
+                    $scope.center will always be set to {0, 0} when the map loads
+                */
+                var initialViewChangeHandler = Microsoft.Maps.Events.addHandler($scope.map, 'viewchangeend', function() {
+                    Microsoft.Maps.Events.removeHandler(initialViewChangeHandler);
+                    //Once initial view change has ended, bind the user's specified handler to view change
+                    var centerBindEvent = angularBingMaps.getCenterBindEvent();
+                    Microsoft.Maps.Events.addHandler($scope.map, centerBindEvent, function(event) {
+                        $scope.center = $scope.map.getCenter();
+                        //This will sometimes throw $digest errors, but is required to keep $scope.center in sync
+                        //$scope.$apply();
+                    });
+                });
 
                 $scope.$watch('center', function (center) {
                     $scope.map.setView({animate: true, center: center});
@@ -766,11 +790,14 @@ function bingMapDirective(angularBingMaps, $window, MapUtils) {
                 MapUtils._executeOnBingMapsReadyCallbacks();
                 $scope.$apply();
                 $scope.$broadcast('abm-v8-ready');
+                while(bingMapsReadyCallbacks.length) {
+                    bingMapsReadyCallbacks.pop()();
+                }
             };
 
         }],
-        link: function ($scope, $element) {
-            $scope.$on('abm-v8-ready', function() {
+        link: function ($scope, $element, attr, ctrl) {
+            ctrl.onBingMapsReady(function() {
                 if ($scope.onMapReady) {
                     $scope.onMapReady({ map: $scope.map });
                 }
@@ -789,7 +816,7 @@ function polygonDirective(MapUtils) {
 
     function link(scope, element, attrs, mapCtrl) {
 
-        scope.$on('abm-v8-ready', function() {
+        mapCtrl.onBingMapsReady(function() {
 
             var bingMapLocations = [];
             var eventHandlers = {};
@@ -887,7 +914,7 @@ function polylineDirective(MapUtils) {
     'use strict';
 
     function link(scope, element, attrs, mapCtrl) {
-        scope.$on('abm-v8-ready', function() {
+        mapCtrl.onBingMapsReady(function() {
 
             var bingMapLocations = [];
 
@@ -952,13 +979,20 @@ angular.module('angularBingMaps.directives').directive('polyline', polylineDirec
 function pushpinDirective(MapUtils) {
     'use strict';
 
-    function link(scope, element, attrs, mapCtrl) {
-        scope.$on('abm-v8-ready', function() {
+    function link(scope, element, attrs, ctrls) {
+        var pushpinCtrl = ctrls[0];
+        var mapCtrl = ctrls[1];
+        mapCtrl.onBingMapsReady(function() {
+
+            pushpinCtrl.pin = new Microsoft.Maps.Pushpin(new Microsoft.Maps.Location(0.0, 0.0));
+            scope.pin = pushpinCtrl.pin;
+
             var eventHandlers = {};
 
             function updatePosition() {
                 if (!isNaN(scope.lat) && !isNaN(scope.lng)) {
                     scope.pin.setLocation(new Microsoft.Maps.Location(scope.lat, scope.lng));
+                    //Tell any child infoboxes to use this location also
                     scope.$broadcast('positionUpdated', scope.pin.getLocation());
                 }
             }
@@ -1062,11 +1096,7 @@ function pushpinDirective(MapUtils) {
     return {
         link: link,
         controller: ['$scope', function ($scope) {
-            var _this = this;
-            $scope.$on('abm-v8-ready', function() {
-                _this.pin = new Microsoft.Maps.Pushpin(new Microsoft.Maps.Location(0.0, 0.0));
-                $scope.pin = _this.pin;
-            });
+            return this;
         }],
         template: '<div ng-transclude></div>',
         restrict: 'EA',
@@ -1081,7 +1111,7 @@ function pushpinDirective(MapUtils) {
             fontIcon: '=?',
             fontIconSize: '=?'
         },
-        require: '^bingMap'
+        require: ['^pushpin', '^bingMap']
     };
 
 }
@@ -1095,7 +1125,7 @@ function tileLayerDirective() {
 
     function link(scope, element, attrs, mapCtrl) {
 
-        scope.$on('abm-v8-ready', function() {
+        mapCtrl.onBingMapsReady(function() {
             var tileSource, tileLayer;
 
             function createTileSource() {
@@ -1143,6 +1173,8 @@ function tileLayerDirective() {
                 mapCtrl.map.layers.remove(tileLayer);
             });
 
+            createTileSource();
+
         });
 
 
@@ -1170,7 +1202,7 @@ function wktDirective(MapUtils) {
     'use strict';
 
     function link(scope, element, attrs, mapCtrl) {
-        scope.$on('abm-v8-ready', function() {
+        mapCtrl.onBingMapsReady(function() {
 
             Microsoft.Maps.loadModule(['Microsoft.Maps.WellKnownText', 'Microsoft.Maps.AdvancedShapes'], function () {
                 init();
