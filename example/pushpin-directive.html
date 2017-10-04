@@ -41,7 +41,7 @@
         </script>
 
         <style type="text/css">
-            bing-map {
+            html, body, .bing-map-container, bing-map {
                 height: 100%;
                 width: 100%;
             }
@@ -49,10 +49,10 @@
 
     </head>
     <body ng-app="angularBingMapExample" ng-strict-di>
-
+        <i class="fa fa-map-marker"></i>
         <div class="bing-map-container" ng-controller="ExampleController">
             <bing-map
-                credentials="'AkaxzD5YOJCbIvziHVOLfm6AkeM5Z5UQ3dHS53mQzwK-6LGWnxYjAwNqfe3D4UBT'"
+                credentials="'AkNL7Y6gwH1ob4EJNuwAM6RytY6Rf6a1qCFgTyLCMXZqFD2ZVq9GyAFq4v1xDoJ7'"
                 center="mapOptions.center"
                 zoom="mapOptions.zoom"
                 map-type="mapOptions.mapType">
@@ -69,6 +69,5 @@
             </bing-map>
 
         </div>
-
     </body>
 </html>

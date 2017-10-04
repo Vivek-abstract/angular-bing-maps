@@ -4,7 +4,7 @@ function polylineDirective(MapUtils) {
     'use strict';
 
     function link(scope, element, attrs, mapCtrl) {
-        scope.$on('abm-v8-ready', function() {
+        mapCtrl.onBingMapsReady(function() {
 
             var bingMapLocations = [];
 

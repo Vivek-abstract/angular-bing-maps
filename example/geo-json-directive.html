@@ -15,7 +15,7 @@
                 $scope.mapOptions = {};
                 $scope.mapOptions.center = {latitude: 30.614919,longitude: -96.342316};
                 $scope.mapOptions.zoom = 6;
-                $scope.mapOptions.mapType = Microsoft.Maps.MapTypeId.canvasLight;
+                //$scope.mapOptions.mapType = Microsoft.Maps.MapTypeId.canvasLight;
 
                 var geoJsonUrl = 'Polygon.geo.json';
                 $http.get(geoJsonUrl).then(function(response) {
@@ -36,7 +36,7 @@
 
         <div class="bing-map-container" ng-controller="ExampleController">
             <bing-map
-                credentials="'AkaxzD5YOJCbIvziHVOLfm6AkeM5Z5UQ3dHS53mQzwK-6LGWnxYjAwNqfe3D4UBT'"
+                credentials="'AkNL7Y6gwH1ob4EJNuwAM6RytY6Rf6a1qCFgTyLCMXZqFD2ZVq9GyAFq4v1xDoJ7'"
                 center="mapOptions.center"
                 zoom="mapOptions.zoom"
                 map-type="mapOptions.mapType">

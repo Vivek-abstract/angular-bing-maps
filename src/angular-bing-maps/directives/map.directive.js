@@ -20,6 +20,16 @@ function bingMapDirective(angularBingMaps, $window, MapUtils) {
             // Controllers get instantiated before link function is run, so instantiate the map in the Controller
             // so that it is available to child link functions
             var _this = this;
+            var isBingMapsLoaded = false;
+            var bingMapsReadyCallbacks = [];
+            _this.onBingMapsReady = function(callback) {
+                if (_this.isBingMapsLoaded) {
+                    callback();
+                } else {
+                    bingMapsReadyCallbacks.push(callback);
+                }
+            };
+
             $window.angularBingMapsReady = function() {
                 // Get default mapOptions the user set in config block
                 var mapOptions = angularBingMaps.getDefaultMapOptions();
@@ -44,6 +54,22 @@ function bingMapDirective(angularBingMaps, $window, MapUtils) {
 
                 var eventHandlers = {};
                 $scope.map = _this.map;
+
+                /*
+                    Since Bing Maps fires view change events as soon as the map loads, we have to wait until after the
+                    initial viewchange event has completed before we bind to $scope.center. Otherwise the user's
+                    $scope.center will always be set to {0, 0} when the map loads
+                */
+                var initialViewChangeHandler = Microsoft.Maps.Events.addHandler($scope.map, 'viewchangeend', function() {
+                    Microsoft.Maps.Events.removeHandler(initialViewChangeHandler);
+                    //Once initial view change has ended, bind the user's specified handler to view change
+                    var centerBindEvent = angularBingMaps.getCenterBindEvent();
+                    Microsoft.Maps.Events.addHandler($scope.map, centerBindEvent, function(event) {
+                        $scope.center = $scope.map.getCenter();
+                        //This will sometimes throw $digest errors, but is required to keep $scope.center in sync
+                        //$scope.$apply();
+                    });
+                });
 
                 $scope.$watch('center', function (center) {
                     $scope.map.setView({animate: true, center: center});
@@ -82,11 +108,14 @@ function bingMapDirective(angularBingMaps, $window, MapUtils) {
                 MapUtils._executeOnBingMapsReadyCallbacks();
                 $scope.$apply();
                 $scope.$broadcast('abm-v8-ready');
+                while(bingMapsReadyCallbacks.length) {
+                    bingMapsReadyCallbacks.pop()();
+                }
             };
 
         },
-        link: function ($scope, $element) {
-            $scope.$on('abm-v8-ready', function() {
+        link: function ($scope, $element, attr, ctrl) {
+            ctrl.onBingMapsReady(function() {
                 if ($scope.onMapReady) {
                     $scope.onMapReady({ map: $scope.map });
                 }

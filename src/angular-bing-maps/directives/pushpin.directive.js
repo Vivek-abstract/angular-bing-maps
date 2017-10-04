@@ -3,13 +3,20 @@
 function pushpinDirective(MapUtils) {
     'use strict';
 
-    function link(scope, element, attrs, mapCtrl) {
-        scope.$on('abm-v8-ready', function() {
+    function link(scope, element, attrs, ctrls) {
+        var pushpinCtrl = ctrls[0];
+        var mapCtrl = ctrls[1];
+        mapCtrl.onBingMapsReady(function() {
+
+            pushpinCtrl.pin = new Microsoft.Maps.Pushpin(new Microsoft.Maps.Location(0.0, 0.0));
+            scope.pin = pushpinCtrl.pin;
+
             var eventHandlers = {};
 
             function updatePosition() {
                 if (!isNaN(scope.lat) && !isNaN(scope.lng)) {
                     scope.pin.setLocation(new Microsoft.Maps.Location(scope.lat, scope.lng));
+                    //Tell any child infoboxes to use this location also
                     scope.$broadcast('positionUpdated', scope.pin.getLocation());
                 }
             }
@@ -110,11 +117,7 @@ function pushpinDirective(MapUtils) {
     return {
         link: link,
         controller: ['$scope', function ($scope) {
-            var _this = this;
-            $scope.$on('abm-v8-ready', function() {
-                _this.pin = new Microsoft.Maps.Pushpin(new Microsoft.Maps.Location(0.0, 0.0));
-                $scope.pin = _this.pin;
-            });
+            return this;
         }],
         template: '<div ng-transclude></div>',
         restrict: 'EA',
@@ -129,7 +132,7 @@ function pushpinDirective(MapUtils) {
             fontIcon: '=?',
             fontIconSize: '=?'
         },
-        require: '^bingMap'
+        require: ['^pushpin', '^bingMap']
     };
 
 }

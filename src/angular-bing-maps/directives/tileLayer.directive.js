@@ -5,7 +5,7 @@ function tileLayerDirective() {
 
     function link(scope, element, attrs, mapCtrl) {
 
-        scope.$on('abm-v8-ready', function() {
+        mapCtrl.onBingMapsReady(function() {
             var tileSource, tileLayer;
 
             function createTileSource() {
@@ -52,6 +52,8 @@ function tileLayerDirective() {
             scope.$on('$destroy', function() {
                 mapCtrl.map.layers.remove(tileLayer);
             });
+
+            createTileSource();
 
         });
 

@@ -4,7 +4,7 @@ function drawingToolsDirective(MapUtils) {
     'use strict';
 
     function link(scope, element, attrs, mapCtrl) {
-        scope.$on('abm-v8-ready', function() {
+        mapCtrl.onBingMapsReady(function() {
 
             Microsoft.Maps.loadModule(['Microsoft.Maps.DrawingTools', 'Microsoft.Maps.SpatialMath'], function () {
                 init();

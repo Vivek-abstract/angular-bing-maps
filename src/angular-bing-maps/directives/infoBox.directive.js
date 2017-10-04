@@ -4,13 +4,13 @@ function infoBoxDirective() {
     'use strict';
 
     function link(scope, element, attrs, ctrls) {
-        scope.$on('abm-v8-ready', function() {
+        var mapCtrl = ctrls[0];
+        var pushpinCtrl = ctrls[1];
+        mapCtrl.onBingMapsReady(function() {
 
-            var provider = ctrls[0];
-            var pushpinCtrl = ctrls[1];
             var infobox = new Microsoft.Maps.Infobox(new Microsoft.Maps.Location(0.0 , 0.0));
 
-            infobox.setMap(provider.map);
+            infobox.setMap(mapCtrl.map);
 
             function updateLocation() {
                 //Ensure lat and lng are defined first
@@ -49,8 +49,6 @@ function infoBoxDirective() {
             if (!pushpinCtrl) {
                 scope.$watch('lat', updateLocation);
                 scope.$watch('lng', updateLocation);
-            } else {
-                infobox.setLocation(pushpinCtrl.pin.getLocation());
             }
 
             scope.$watch('options', updateOptions);
