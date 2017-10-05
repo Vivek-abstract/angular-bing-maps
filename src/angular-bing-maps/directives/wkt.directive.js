@@ -6,14 +6,15 @@ function wktDirective(MapUtils) {
     function link(scope, element, attrs, mapCtrl) {
         mapCtrl.onBingMapsReady(function() {
 
-            Microsoft.Maps.loadModule(['Microsoft.Maps.WellKnownText', 'Microsoft.Maps.AdvancedShapes'], function () {
-                init();
-            });
-
             var map;
             var drawingLayer;
             var entity = null;
             var eventHandlers = [];
+            
+            Microsoft.Maps.loadModule(['Microsoft.Maps.WellKnownText', 'Microsoft.Maps.AdvancedShapes'], function () {
+                init();
+            });
+
 
             function init() {
                 map = mapCtrl.map;
