@@ -20,10 +20,9 @@ function bingMapDirective(angularBingMaps, $window, MapUtils) {
             // Controllers get instantiated before link function is run, so instantiate the map in the Controller
             // so that it is available to child link functions
             var _this = this;
-            var isBingMapsLoaded = false;
             var bingMapsReadyCallbacks = [];
             _this.onBingMapsReady = function(callback) {
-                if (isBingMapsLoaded) {
+                if (MapUtils.isBingMapsLoaded()) {
                     callback();
                 } else {
                     bingMapsReadyCallbacks.push(callback);
@@ -111,9 +110,12 @@ function bingMapDirective(angularBingMaps, $window, MapUtils) {
                 while(bingMapsReadyCallbacks.length) {
                     bingMapsReadyCallbacks.pop()();
                 }
-                isBingMapsLoaded = true;
             };
 
+            //When a <bing-map> is created after page load, we need to go ahead and fire off this method to init the new one
+            if (MapUtils.isBingMapsLoaded()) {
+                $window.angularBingMapsReady();
+            }
         },
         link: function ($scope, $element, attr, ctrl) {
             ctrl.onBingMapsReady(function() {

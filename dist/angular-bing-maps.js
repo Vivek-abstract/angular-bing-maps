@@ -34,61 +34,6 @@ mapUtilsService.$inject = ['$q', 'angularBingMaps'];(function () {
 
 })();
 
-/*global angular, Microsoft */
-
-function angularBingMapsProvider() {
-    'use strict';
-
-    var defaultMapOptions = {};
-
-    var centerBindEvent = 'viewchangeend';
-
-    var iconFontFamily = 'Arial';
-
-    function setDefaultMapOptions(usersOptions) {
-        defaultMapOptions = usersOptions;
-    }
-
-    function getDefaultMapOptions() {
-        return defaultMapOptions;
-    }
-
-    function bindCenterRealtime(_bindCenterRealtime) {
-        if(_bindCenterRealtime) {
-            centerBindEvent = 'viewchange';
-        } else {
-            centerBindEvent = 'viewchangeend';
-        }
-    }
-
-    function getCenterBindEvent() {
-        return centerBindEvent;
-    }
-
-    function setIconFontFamily(family) {
-        iconFontFamily = family;
-    }
-    function getIconFontFamily() {
-        return iconFontFamily;
-    }
-
-    return {
-        setDefaultMapOptions: setDefaultMapOptions,
-        bindCenterRealtime: bindCenterRealtime,
-        setIconFontFamily: setIconFontFamily,
-        $get: function() {
-            return {
-                getDefaultMapOptions: getDefaultMapOptions,
-                getCenterBindEvent: getCenterBindEvent,
-                getIconFontFamily: getIconFontFamily
-            };
-        }
-    };
-
-}
-
-angular.module('angularBingMaps.providers').provider('angularBingMaps', angularBingMapsProvider);
-
 /*global angular, Microsoft, DrawingTools, console*/
 
 function drawingToolsDirective(MapUtils) {
@@ -757,10 +702,9 @@ function bingMapDirective(angularBingMaps, $window, MapUtils) {
             // Controllers get instantiated before link function is run, so instantiate the map in the Controller
             // so that it is available to child link functions
             var _this = this;
-            var isBingMapsLoaded = false;
             var bingMapsReadyCallbacks = [];
             _this.onBingMapsReady = function(callback) {
-                if (isBingMapsLoaded) {
+                if (MapUtils.isBingMapsLoaded()) {
                     callback();
                 } else {
                     bingMapsReadyCallbacks.push(callback);
@@ -848,9 +792,12 @@ function bingMapDirective(angularBingMaps, $window, MapUtils) {
                 while(bingMapsReadyCallbacks.length) {
                     bingMapsReadyCallbacks.pop()();
                 }
-                isBingMapsLoaded = true;
             };
 
+            //When a <bing-map> is created after page load, we need to go ahead and fire off this method to init the new one
+            if (MapUtils.isBingMapsLoaded()) {
+                $window.angularBingMapsReady();
+            }
         }],
         link: function ($scope, $element, attr, ctrl) {
             ctrl.onBingMapsReady(function() {
@@ -1395,7 +1342,7 @@ function mapUtilsService($q, angularBingMaps) {
     'use strict';
     var color = require('color');
     var advancedShapesLoaded = false;
-    var isBingMapsLoaded = false;
+    var _isBingMapsLoaded = false;
     var bingMapsOnLoadCallbacks = [];
 
     function makeMicrosoftColor(colorStr) {
@@ -1497,7 +1444,7 @@ function mapUtilsService($q, angularBingMaps) {
     }
 
     function onBingMapsReady(callback) {
-        if (isBingMapsLoaded) {
+        if (_isBingMapsLoaded) {
             callback();
         } else {
             bingMapsOnLoadCallbacks.push(callback);
@@ -1505,11 +1452,15 @@ function mapUtilsService($q, angularBingMaps) {
     }
 
     function _executeOnBingMapsReadyCallbacks() {
-        isBingMapsLoaded = true;
+        _isBingMapsLoaded = true;
         for (var i=0; i<bingMapsOnLoadCallbacks.length; i++) {
             bingMapsOnLoadCallbacks[i]();
         }
         bingMapsOnLoadCallbacks = null;
+    }
+
+    function isBingMapsLoaded() {
+        return _isBingMapsLoaded;
     }
 
     return {
@@ -1520,12 +1471,68 @@ function mapUtilsService($q, angularBingMaps) {
         loadAdvancedShapesModule: loadAdvancedShapesModule,
         createFontPushpin: createFontPushpin,
         onBingMapsReady: onBingMapsReady,
+        isBingMapsLoaded: isBingMapsLoaded,
         _executeOnBingMapsReadyCallbacks: _executeOnBingMapsReadyCallbacks
     };
 
 }
 
 angular.module('angularBingMaps.services').service('MapUtils', mapUtilsService);
+
+/*global angular, Microsoft */
+
+function angularBingMapsProvider() {
+    'use strict';
+
+    var defaultMapOptions = {};
+
+    var centerBindEvent = 'viewchangeend';
+
+    var iconFontFamily = 'Arial';
+
+    function setDefaultMapOptions(usersOptions) {
+        defaultMapOptions = usersOptions;
+    }
+
+    function getDefaultMapOptions() {
+        return defaultMapOptions;
+    }
+
+    function bindCenterRealtime(_bindCenterRealtime) {
+        if(_bindCenterRealtime) {
+            centerBindEvent = 'viewchange';
+        } else {
+            centerBindEvent = 'viewchangeend';
+        }
+    }
+
+    function getCenterBindEvent() {
+        return centerBindEvent;
+    }
+
+    function setIconFontFamily(family) {
+        iconFontFamily = family;
+    }
+    function getIconFontFamily() {
+        return iconFontFamily;
+    }
+
+    return {
+        setDefaultMapOptions: setDefaultMapOptions,
+        bindCenterRealtime: bindCenterRealtime,
+        setIconFontFamily: setIconFontFamily,
+        $get: function() {
+            return {
+                getDefaultMapOptions: getDefaultMapOptions,
+                getCenterBindEvent: getCenterBindEvent,
+                getIconFontFamily: getIconFontFamily
+            };
+        }
+    };
+
+}
+
+angular.module('angularBingMaps.providers').provider('angularBingMaps', angularBingMapsProvider);
 
 },{"color":6}],2:[function(require,module,exports){
 /* MIT license */

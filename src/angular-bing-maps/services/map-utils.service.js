@@ -4,7 +4,7 @@ function mapUtilsService($q, angularBingMaps) {
     'use strict';
     var color = require('color');
     var advancedShapesLoaded = false;
-    var isBingMapsLoaded = false;
+    var _isBingMapsLoaded = false;
     var bingMapsOnLoadCallbacks = [];
 
     function makeMicrosoftColor(colorStr) {
@@ -106,7 +106,7 @@ function mapUtilsService($q, angularBingMaps) {
     }
 
     function onBingMapsReady(callback) {
-        if (isBingMapsLoaded) {
+        if (_isBingMapsLoaded) {
             callback();
         } else {
             bingMapsOnLoadCallbacks.push(callback);
@@ -114,11 +114,15 @@ function mapUtilsService($q, angularBingMaps) {
     }
 
     function _executeOnBingMapsReadyCallbacks() {
-        isBingMapsLoaded = true;
+        _isBingMapsLoaded = true;
         for (var i=0; i<bingMapsOnLoadCallbacks.length; i++) {
             bingMapsOnLoadCallbacks[i]();
         }
         bingMapsOnLoadCallbacks = null;
+    }
+
+    function isBingMapsLoaded() {
+        return _isBingMapsLoaded;
     }
 
     return {
@@ -129,6 +133,7 @@ function mapUtilsService($q, angularBingMaps) {
         loadAdvancedShapesModule: loadAdvancedShapesModule,
         createFontPushpin: createFontPushpin,
         onBingMapsReady: onBingMapsReady,
+        isBingMapsLoaded: isBingMapsLoaded,
         _executeOnBingMapsReadyCallbacks: _executeOnBingMapsReadyCallbacks
     };
 
