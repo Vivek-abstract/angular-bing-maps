@@ -1508,10 +1508,15 @@ function mapUtilsService($q, angularBingMaps) {
     }
 
     function _executeOnBingMapsReadyCallbacks() {
+        if(_isBingMapsLoaded) {
+            //Bing maps was already loaded
+            return;
+        }
         _isBingMapsLoaded = true;
         for (var i=0; i<bingMapsOnLoadCallbacks.length; i++) {
             bingMapsOnLoadCallbacks[i]();
         }
+        //We are done with this list, destroy the reference to it
         bingMapsOnLoadCallbacks = null;
     }
 
