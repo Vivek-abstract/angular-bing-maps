@@ -1,6 +1,7 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 
 drawingToolsDirective.$inject = ['MapUtils'];
+geoJsonDirective.$inject = ['MapUtils'];
 bingMapDirective.$inject = ['angularBingMaps', '$window', 'MapUtils'];
 polygonDirective.$inject = ['MapUtils'];
 polylineDirective.$inject = ['MapUtils'];
@@ -42,9 +43,7 @@ function drawingToolsDirective(MapUtils) {
     function link(scope, element, attrs, mapCtrl) {
         mapCtrl.onBingMapsReady(function() {
 
-            Microsoft.Maps.loadModule(['Microsoft.Maps.DrawingTools', 'Microsoft.Maps.SpatialMath'], function () {
-                init();
-            });
+            MapUtils.loadDrawingToolsModule(init);
 
             var map;
             var tools;
@@ -538,15 +537,13 @@ angular.module('angularBingMaps.directives').directive('drawingTools', drawingTo
 
 /*global angular, Microsoft, GeoJSONModule, console*/
 
-function geoJsonDirective() {
+function geoJsonDirective(MapUtils) {
     'use strict';
 
     function link(scope, element, attrs, mapCtrl) {
         mapCtrl.onBingMapsReady(function() {
 
-            Microsoft.Maps.loadModule(['Microsoft.Maps.GeoJson', 'Microsoft.Maps.AdvancedShapes'], function () {
-                init();
-            });
+            MapUtils.loadGeoJsonModule(init);
 
             var map;
             var drawingLayer;
@@ -1211,10 +1208,8 @@ function wktDirective(MapUtils) {
             var drawingLayer;
             var entity = null;
             var eventHandlers = [];
-            
-            Microsoft.Maps.loadModule(['Microsoft.Maps.WellKnownText', 'Microsoft.Maps.AdvancedShapes'], function () {
-                init();
-            });
+
+            MapUtils.loadWKTModule(init);
 
 
             function init() {
@@ -1266,9 +1261,9 @@ function wktDirective(MapUtils) {
                 }
 
                 if (entity instanceof Array) {
-                    for (var i = 0; i < entity.getLength(); i++) {
-                        if (entity.get(i) instanceof Microsoft.Maps.Polygon || entity.get(i) instanceof Microsoft.Maps.Polyline) {
-                            entity.get(i).setOptions(options);
+                    for (var i = 0; i < entity.length; i++) {
+                        if (entity[i] instanceof Microsoft.Maps.Polygon || entity[i] instanceof Microsoft.Maps.Polyline) {
+                            entity[i].setOptions(options);
                         }
                     }
                 } else {
@@ -1280,10 +1275,10 @@ function wktDirective(MapUtils) {
                 removeAllHandlers();
                 //Loop through each event handler
                 angular.forEach(handlers, function(usersHandler, eventName) {
-                    if (entity instanceof Microsoft.Maps.EntityCollection) {
+                    if (entity instanceof Array) {
                         //Add the handler to all entities in collection
-                        for (var i = 0; i < entity.getLength(); i++) {
-                            addHandler(entity.get(i), eventName, usersHandler);
+                        for (var i = 0; i < entity.length; i++) {
+                            addHandler(entity[i], eventName, usersHandler);
                         }
                     } else {
                         addHandler(entity, eventName, usersHandler);
@@ -1524,6 +1519,75 @@ function mapUtilsService($q, angularBingMaps) {
         return _isBingMapsLoaded;
     }
 
+    var hasWKTBeenLoaded = false;
+    var isWKTCurrentlyLoading = false;
+    var wktCallbacks = [];
+    function loadWKTModule(callback) {
+        if (hasWKTBeenLoaded) {
+            console.debug('WKT Module already loaded, firing callback');
+            if (callback && typeof callback === 'function') {callback();}
+        } else if (isWKTCurrentlyLoading) {
+            console.debug('WKT Module is currently loading, pushing callback into list');
+            wktCallbacks.push(callback);
+        } else {
+            //Only call this method once to avoid kicking off multiple digest cycles
+            isWKTCurrentlyLoading = true;
+            wktCallbacks.push(callback);
+            console.debug('WKT Module not loaded, calling Microsoft.Maps.loadModule');
+            Microsoft.Maps.loadModule(['Microsoft.Maps.WellKnownText', 'Microsoft.Maps.AdvancedShapes'], function() {
+                console.debug('Ok, WKT Module loaded now. Firing callbacks...');
+                for(var i=0;i<wktCallbacks.length;i++) {
+                    var cb = wktCallbacks[i];
+                    console.debug('Firing WKT callback number ' + i);
+                    if (cb && typeof cb === 'function') {cb();}
+                }
+            });
+        }
+    }
+
+    var hasGeoJsonBeenLoaded = false;
+    var isGeoJsonCurrentlyLoading = false;
+    var geoJsonCallbacks = [];
+    function loadGeoJsonModule(callback) {
+        if (hasGeoJsonBeenLoaded) {
+            if (callback && typeof callback === 'function') {callback();}
+        } else if (isGeoJsonCurrentlyLoading) {
+            geoJsonCallbacks.push(callback);
+        } else {
+            //Only call this method once to avoid kicking off multiple digest cycles
+            isGeoJsonCurrentlyLoading = true;
+            geoJsonCallbacks.push(callback);
+            Microsoft.Maps.loadModule(['Microsoft.Maps.GeoJson', 'Microsoft.Maps.AdvancedShapes'], function() {
+                for(var i=0;i<geoJsonCallbacks.length;i++) {
+                    var cb = geoJsonCallbacks[i];
+                    if (cb && typeof cb === 'function') {cb();}
+                }
+            });
+        }
+    }
+
+    var hasDrawingToolsBeenLoaded = false;
+    var isDrawingToolsCurrentlyLoading = false;
+    var drawingToolsCallbacks = [];
+    function loadDrawingToolsModule(callback) {
+        if (hasDrawingToolsBeenLoaded) {
+            if (callback && typeof callback === 'function') {callback();}
+        } else if (isDrawingToolsCurrentlyLoading) {
+            drawingToolsCallbacks.push(callback);
+        } else {
+            //Only call this method once to avoid kicking off multiple digest cycles
+            isDrawingToolsCurrentlyLoading = true;
+            drawingToolsCallbacks.push(callback);
+            Microsoft.Maps.loadModule(['Microsoft.Maps.DrawingTools', 'Microsoft.Maps.SpatialMath'], function() {
+                for(var i=0;i<drawingToolsCallbacks.length;i++) {
+                    var cb = drawingToolsCallbacks[i];
+                    if (cb && typeof cb === 'function') {cb();}
+                }
+            });
+        }
+    }
+
+
     return {
         makeMicrosoftColor: makeMicrosoftColor,
         makeMicrosoftLatLng: makeMicrosoftLatLng,
@@ -1533,6 +1597,9 @@ function mapUtilsService($q, angularBingMaps) {
         createFontPushpin: createFontPushpin,
         onBingMapsReady: onBingMapsReady,
         isBingMapsLoaded: isBingMapsLoaded,
+        loadWKTModule: loadWKTModule,
+        loadGeoJsonModule: loadGeoJsonModule,
+        loadDrawingToolsModule: loadDrawingToolsModule,
         _executeOnBingMapsReadyCallbacks: _executeOnBingMapsReadyCallbacks
     };
 

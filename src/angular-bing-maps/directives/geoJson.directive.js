@@ -1,14 +1,12 @@
 /*global angular, Microsoft, GeoJSONModule, console*/
 
-function geoJsonDirective() {
+function geoJsonDirective(MapUtils) {
     'use strict';
 
     function link(scope, element, attrs, mapCtrl) {
         mapCtrl.onBingMapsReady(function() {
 
-            Microsoft.Maps.loadModule(['Microsoft.Maps.GeoJson', 'Microsoft.Maps.AdvancedShapes'], function () {
-                init();
-            });
+            MapUtils.loadGeoJsonModule(init);
 
             var map;
             var drawingLayer;

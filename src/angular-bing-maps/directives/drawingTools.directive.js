@@ -6,9 +6,7 @@ function drawingToolsDirective(MapUtils) {
     function link(scope, element, attrs, mapCtrl) {
         mapCtrl.onBingMapsReady(function() {
 
-            Microsoft.Maps.loadModule(['Microsoft.Maps.DrawingTools', 'Microsoft.Maps.SpatialMath'], function () {
-                init();
-            });
+            MapUtils.loadDrawingToolsModule(init);
 
             var map;
             var tools;

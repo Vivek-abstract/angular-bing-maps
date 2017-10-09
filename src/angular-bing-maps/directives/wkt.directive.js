@@ -10,10 +10,8 @@ function wktDirective(MapUtils) {
             var drawingLayer;
             var entity = null;
             var eventHandlers = [];
-            
-            Microsoft.Maps.loadModule(['Microsoft.Maps.WellKnownText', 'Microsoft.Maps.AdvancedShapes'], function () {
-                init();
-            });
+
+            MapUtils.loadWKTModule(init);
 
 
             function init() {
@@ -65,9 +63,9 @@ function wktDirective(MapUtils) {
                 }
 
                 if (entity instanceof Array) {
-                    for (var i = 0; i < entity.getLength(); i++) {
-                        if (entity.get(i) instanceof Microsoft.Maps.Polygon || entity.get(i) instanceof Microsoft.Maps.Polyline) {
-                            entity.get(i).setOptions(options);
+                    for (var i = 0; i < entity.length; i++) {
+                        if (entity[i] instanceof Microsoft.Maps.Polygon || entity[i] instanceof Microsoft.Maps.Polyline) {
+                            entity[i].setOptions(options);
                         }
                     }
                 } else {
@@ -79,10 +77,10 @@ function wktDirective(MapUtils) {
                 removeAllHandlers();
                 //Loop through each event handler
                 angular.forEach(handlers, function(usersHandler, eventName) {
-                    if (entity instanceof Microsoft.Maps.EntityCollection) {
+                    if (entity instanceof Array) {
                         //Add the handler to all entities in collection
-                        for (var i = 0; i < entity.getLength(); i++) {
-                            addHandler(entity.get(i), eventName, usersHandler);
+                        for (var i = 0; i < entity.length; i++) {
+                            addHandler(entity[i], eventName, usersHandler);
                         }
                     } else {
                         addHandler(entity, eventName, usersHandler);
