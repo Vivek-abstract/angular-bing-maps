@@ -20,14 +20,6 @@ function bingMapDirective(angularBingMaps, $window, MapUtils) {
             // Controllers get instantiated before link function is run, so instantiate the map in the Controller
             // so that it is available to child link functions
             var _this = this;
-            var bingMapsReadyCallbacks = [];
-            _this.onBingMapsReady = function(callback) {
-                if (MapUtils.isBingMapsLoaded()) {
-                    callback();
-                } else {
-                    bingMapsReadyCallbacks.push(callback);
-                }
-            };
 
             $window.angularBingMapsReady = function() {
                 // Get default mapOptions the user set in config block
@@ -66,7 +58,7 @@ function bingMapDirective(angularBingMaps, $window, MapUtils) {
                     Microsoft.Maps.Events.addHandler($scope.map, centerBindEvent, function(event) {
                         $scope.center = $scope.map.getCenter();
                         //This will sometimes throw $digest errors, but is required to keep $scope.center in sync
-                        //$scope.$apply();
+                        $scope.$apply();
                     });
                 });
 
@@ -104,12 +96,12 @@ function bingMapDirective(angularBingMaps, $window, MapUtils) {
                         eventHandlers[eventName] = bingMapsHandler;
                     });
                 });
-                MapUtils._executeOnBingMapsReadyCallbacks();
-                $scope.$apply();
-                $scope.$broadcast('abm-v8-ready');
-                while(bingMapsReadyCallbacks.length) {
-                    bingMapsReadyCallbacks.pop()();
-                }
+                var additionalMicrosoftModules = angularBingMaps.getAdditionalMicrosoftModules();
+                Microsoft.Maps.loadModule(additionalMicrosoftModules, function() {
+                    MapUtils._executeOnBingMapsReadyCallbacks();
+                    $scope.$apply();
+                    $scope.$broadcast('abm-v8-ready');
+                });
             };
 
             //When a <bing-map> is created after page load, we need to go ahead and fire off this method to init the new one
@@ -118,7 +110,7 @@ function bingMapDirective(angularBingMaps, $window, MapUtils) {
             }
         },
         link: function ($scope, $element, attr, ctrl) {
-            ctrl.onBingMapsReady(function() {
+            MapUtils.onBingMapsReady(function() {
                 if ($scope.onMapReady) {
                     $scope.onMapReady({ map: $scope.map });
                 }

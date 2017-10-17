@@ -4,36 +4,32 @@ function wktDirective(MapUtils) {
     'use strict';
 
     function link(scope, element, attrs, mapCtrl) {
-        mapCtrl.onBingMapsReady(function() {
+        MapUtils.onBingMapsReady(function() {
 
             var map;
             var drawingLayer;
             var entity = null;
             var eventHandlers = [];
 
-            MapUtils.loadWKTModule(init);
 
+            map = mapCtrl.map;
+            drawingLayer = new Microsoft.Maps.Layer();
+            map.layers.insert(drawingLayer);
 
-            function init() {
-                map = mapCtrl.map;
-                drawingLayer = new Microsoft.Maps.Layer();
-                map.layers.insert(drawingLayer);
+            processWkt(scope.text);
+            initHandlers(scope.events);
 
-                processWkt(scope.text);
-                initHandlers(scope.events);
+            // Watchers
+            scope.$watch('text', function(shape) {
+                processWkt(shape);
+            }, true);
 
-                // Watchers
-                scope.$watch('text', function(shape) {
-                    processWkt(shape);
-                }, true);
+            scope.$watch('events', function(events) {
+                initHandlers(events);
+            });
 
-                scope.$watch('events', function(events) {
-                    initHandlers(events);
-                });
-
-                scope.$watch('fillColor', setOptions, true);
-                scope.$watch('strokeColor', setOptions, true);
-            }
+            scope.$watch('fillColor', setOptions, true);
+            scope.$watch('strokeColor', setOptions, true);
 
             function processWkt(shape) {
                 if (entity) {

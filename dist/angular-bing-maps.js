@@ -2,10 +2,12 @@
 
 drawingToolsDirective.$inject = ['MapUtils'];
 geoJsonDirective.$inject = ['MapUtils'];
+infoBoxDirective.$inject = ['MapUtils'];
 bingMapDirective.$inject = ['angularBingMaps', '$window', 'MapUtils'];
 polygonDirective.$inject = ['MapUtils'];
 polylineDirective.$inject = ['MapUtils'];
 pushpinDirective.$inject = ['MapUtils'];
+tileLayerDirective.$inject = ['MapUtils'];
 wktDirective.$inject = ['MapUtils'];
 mapUtilsService.$inject = ['$q', 'angularBingMaps'];(function () {
 
@@ -41,9 +43,7 @@ function drawingToolsDirective(MapUtils) {
     'use strict';
 
     function link(scope, element, attrs, mapCtrl) {
-        mapCtrl.onBingMapsReady(function() {
-
-            MapUtils.loadDrawingToolsModule(init);
+        MapUtils.onBingMapsReady(function() {
 
             var map;
             var tools;
@@ -59,38 +59,36 @@ function drawingToolsDirective(MapUtils) {
                 strokeThickness: 3
             };
 
-            function init() {
-                map = mapCtrl.map;
+            map = mapCtrl.map;
 
-                // Create a layer for the drawn shapes.
-                drawingLayer = new Microsoft.Maps.Layer();
-                map.layers.insert(drawingLayer);
+            // Create a layer for the drawn shapes.
+            drawingLayer = new Microsoft.Maps.Layer();
+            map.layers.insert(drawingLayer);
 
-                tools = new Microsoft.Maps.DrawingTools(map);
+            tools = new Microsoft.Maps.DrawingTools(map);
 
-                setOptions();
+            setOptions();
 
-                if (scope.onShapeChange) {
-                    Microsoft.Maps.Events.addHandler(tools, 'drawingEnded', function(shapes) {
-                        scope.onShapeChange({shapes: shapes});
-                        scope.$apply();
+            if (scope.onShapeChange) {
+                Microsoft.Maps.Events.addHandler(tools, 'drawingEnded', function(shapes) {
+                    scope.onShapeChange({shapes: shapes});
+                    scope.$apply();
 
-                        currentShape = null;
-                    });
-                }
-
-                scope.$watch('drawThisShape', function (shape) {
-                    if (shape === null || shape === 'none') {
-                        resetDrawingState();
-                    } else {
-                        setDrawingMode(shape);
-                    }
-                });
-
-                scope.$on('DRAWINGTOOLS.CLEAR', function() {
-                    drawingLayer.clear();
+                    currentShape = null;
                 });
             }
+
+            scope.$watch('drawThisShape', function (shape) {
+                if (shape === null || shape === 'none') {
+                    resetDrawingState();
+                } else {
+                    setDrawingMode(shape);
+                }
+            });
+
+            scope.$on('DRAWINGTOOLS.CLEAR', function() {
+                drawingLayer.clear();
+            });
 
             function setOptions() {
                 if (scope.strokeColor) {
@@ -541,28 +539,24 @@ function geoJsonDirective(MapUtils) {
     'use strict';
 
     function link(scope, element, attrs, mapCtrl) {
-        mapCtrl.onBingMapsReady(function() {
-
-            MapUtils.loadGeoJsonModule(init);
+        MapUtils.onBingMapsReady(function() {
 
             var map;
             var drawingLayer;
 
-            function init() {
-                map = mapCtrl.map;
-                drawingLayer = new Microsoft.Maps.Layer();
-                map.layers.insert(drawingLayer);
+            map = mapCtrl.map;
+            drawingLayer = new Microsoft.Maps.Layer();
+            map.layers.insert(drawingLayer);
 
+            processGeoJson(scope.model);
+
+            scope.$watch('model', function () {
                 processGeoJson(scope.model);
+            });
 
-                scope.$watch('model', function () {
-                    processGeoJson(scope.model);
-                });
-
-                scope.$on('$destroy', function() {
-                    map.layers.remove(drawingLayer);
-                });
-            }
+            scope.$on('$destroy', function() {
+                map.layers.remove(drawingLayer);
+            });
 
             function processGeoJson(model) {
                 if (model) {
@@ -591,13 +585,13 @@ angular.module('angularBingMaps.directives').directive('geoJson', geoJsonDirecti
 
 /*global angular, Microsoft, DrawingTools, console*/
 
-function infoBoxDirective() {
+function infoBoxDirective(MapUtils) {
     'use strict';
 
     function link(scope, element, attrs, ctrls) {
         var mapCtrl = ctrls[0];
         var pushpinCtrl = ctrls[1];
-        mapCtrl.onBingMapsReady(function() {
+        MapUtils.onBingMapsReady(function() {
 
             var infobox = new Microsoft.Maps.Infobox(new Microsoft.Maps.Location(0.0 , 0.0));
 
@@ -699,14 +693,6 @@ function bingMapDirective(angularBingMaps, $window, MapUtils) {
             // Controllers get instantiated before link function is run, so instantiate the map in the Controller
             // so that it is available to child link functions
             var _this = this;
-            var bingMapsReadyCallbacks = [];
-            _this.onBingMapsReady = function(callback) {
-                if (MapUtils.isBingMapsLoaded()) {
-                    callback();
-                } else {
-                    bingMapsReadyCallbacks.push(callback);
-                }
-            };
 
             $window.angularBingMapsReady = function() {
                 // Get default mapOptions the user set in config block
@@ -745,7 +731,7 @@ function bingMapDirective(angularBingMaps, $window, MapUtils) {
                     Microsoft.Maps.Events.addHandler($scope.map, centerBindEvent, function(event) {
                         $scope.center = $scope.map.getCenter();
                         //This will sometimes throw $digest errors, but is required to keep $scope.center in sync
-                        //$scope.$apply();
+                        $scope.$apply();
                     });
                 });
 
@@ -783,12 +769,12 @@ function bingMapDirective(angularBingMaps, $window, MapUtils) {
                         eventHandlers[eventName] = bingMapsHandler;
                     });
                 });
-                MapUtils._executeOnBingMapsReadyCallbacks();
-                $scope.$apply();
-                $scope.$broadcast('abm-v8-ready');
-                while(bingMapsReadyCallbacks.length) {
-                    bingMapsReadyCallbacks.pop()();
-                }
+                var additionalMicrosoftModules = angularBingMaps.getAdditionalMicrosoftModules();
+                Microsoft.Maps.loadModule(additionalMicrosoftModules, function() {
+                    MapUtils._executeOnBingMapsReadyCallbacks();
+                    $scope.$apply();
+                    $scope.$broadcast('abm-v8-ready');
+                });
             };
 
             //When a <bing-map> is created after page load, we need to go ahead and fire off this method to init the new one
@@ -797,7 +783,7 @@ function bingMapDirective(angularBingMaps, $window, MapUtils) {
             }
         }],
         link: function ($scope, $element, attr, ctrl) {
-            ctrl.onBingMapsReady(function() {
+            MapUtils.onBingMapsReady(function() {
                 if ($scope.onMapReady) {
                     $scope.onMapReady({ map: $scope.map });
                 }
@@ -816,7 +802,7 @@ function polygonDirective(MapUtils) {
 
     function link(scope, element, attrs, mapCtrl) {
 
-        mapCtrl.onBingMapsReady(function() {
+        MapUtils.onBingMapsReady(function() {
 
             var bingMapLocations = [];
             var eventHandlers = {};
@@ -914,7 +900,7 @@ function polylineDirective(MapUtils) {
     'use strict';
 
     function link(scope, element, attrs, mapCtrl) {
-        mapCtrl.onBingMapsReady(function() {
+        MapUtils.onBingMapsReady(function() {
 
             var bingMapLocations = [];
 
@@ -982,7 +968,7 @@ function pushpinDirective(MapUtils) {
     function link(scope, element, attrs, ctrls) {
         var pushpinCtrl = ctrls[0];
         var mapCtrl = ctrls[1];
-        mapCtrl.onBingMapsReady(function() {
+        MapUtils.onBingMapsReady(function() {
 
             pushpinCtrl.pin = new Microsoft.Maps.Pushpin(new Microsoft.Maps.Location(0.0, 0.0));
             scope.pin = pushpinCtrl.pin;
@@ -1046,16 +1032,12 @@ function pushpinDirective(MapUtils) {
                 });
             }
 
-            updatePosition();
-            updateEvents(scope.events);
-            updatePinData(scope.pushpinData);
             mapCtrl.map.entities.push(scope.pin);
 
             scope.$watch('lat', updatePosition);
             scope.$watch('lng', updatePosition);
 
             scope.$watch('options', updatePinOptions);
-            updateFontIcon();
 
             scope.$watch('pushpinData', function(newPushpinData) {
                 updatePinData(newPushpinData);
@@ -1120,12 +1102,12 @@ angular.module('angularBingMaps.directives').directive('pushpin', pushpinDirecti
 
 /*global angular, Microsoft, DrawingTools, console*/
 
-function tileLayerDirective() {
+function tileLayerDirective(MapUtils) {
     'use strict';
 
     function link(scope, element, attrs, mapCtrl) {
 
-        mapCtrl.onBingMapsReady(function() {
+        MapUtils.onBingMapsReady(function() {
             var tileSource, tileLayer;
 
             function createTileSource() {
@@ -1173,8 +1155,6 @@ function tileLayerDirective() {
                 mapCtrl.map.layers.remove(tileLayer);
             });
 
-            createTileSource();
-
         });
 
 
@@ -1202,36 +1182,32 @@ function wktDirective(MapUtils) {
     'use strict';
 
     function link(scope, element, attrs, mapCtrl) {
-        mapCtrl.onBingMapsReady(function() {
+        MapUtils.onBingMapsReady(function() {
 
             var map;
             var drawingLayer;
             var entity = null;
             var eventHandlers = [];
 
-            MapUtils.loadWKTModule(init);
 
+            map = mapCtrl.map;
+            drawingLayer = new Microsoft.Maps.Layer();
+            map.layers.insert(drawingLayer);
 
-            function init() {
-                map = mapCtrl.map;
-                drawingLayer = new Microsoft.Maps.Layer();
-                map.layers.insert(drawingLayer);
+            processWkt(scope.text);
+            initHandlers(scope.events);
 
-                processWkt(scope.text);
-                initHandlers(scope.events);
+            // Watchers
+            scope.$watch('text', function(shape) {
+                processWkt(shape);
+            }, true);
 
-                // Watchers
-                scope.$watch('text', function(shape) {
-                    processWkt(shape);
-                }, true);
+            scope.$watch('events', function(events) {
+                initHandlers(events);
+            });
 
-                scope.$watch('events', function(events) {
-                    initHandlers(events);
-                });
-
-                scope.$watch('fillColor', setOptions, true);
-                scope.$watch('strokeColor', setOptions, true);
-            }
+            scope.$watch('fillColor', setOptions, true);
+            scope.$watch('strokeColor', setOptions, true);
 
             function processWkt(shape) {
                 if (entity) {
@@ -1342,6 +1318,14 @@ function angularBingMapsProvider() {
     var centerBindEvent = 'viewchangeend';
 
     var iconFontFamily = 'Arial';
+    
+    var additionalMicrosoftModules = [
+        'Microsoft.Maps.WellKnownText', 
+        'Microsoft.Maps.AdvancedShapes', 
+        'Microsoft.Maps.GeoJson', 
+        'Microsoft.Maps.DrawingTools', 
+        'Microsoft.Maps.SpatialMath'
+    ];
 
     function setDefaultMapOptions(usersOptions) {
         defaultMapOptions = usersOptions;
@@ -1369,16 +1353,25 @@ function angularBingMapsProvider() {
     function getIconFontFamily() {
         return iconFontFamily;
     }
+    
+    function setAdditionalMicrosoftModules(modules) {
+        additionalMicrosoftModules = modules;
+    }
+    function getAdditionalMicrosoftModules() {
+        return additionalMicrosoftModules;
+    }
 
     return {
         setDefaultMapOptions: setDefaultMapOptions,
         bindCenterRealtime: bindCenterRealtime,
         setIconFontFamily: setIconFontFamily,
+        setAdditionalMicrosoftModules: setAdditionalMicrosoftModules,
         $get: function() {
             return {
                 getDefaultMapOptions: getDefaultMapOptions,
                 getCenterBindEvent: getCenterBindEvent,
-                getIconFontFamily: getIconFontFamily
+                getIconFontFamily: getIconFontFamily,
+                getAdditionalMicrosoftModules: getAdditionalMicrosoftModules
             };
         }
     };
@@ -1455,18 +1448,6 @@ function mapUtilsService($q, angularBingMaps) {
         return flat;
     }
 
-    function loadAdvancedShapesModule() {
-        var defered = $q.defer();
-        if(!advancedShapesLoaded) {
-            Microsoft.Maps.loadModule('Microsoft.Maps.AdvancedShapes', { callback: function(){
-                defered.resolve();
-            }});
-        } else {
-            defered.resolve();
-        }
-        return defered.promise;
-    }
-
     function createFontPushpin(text, fontSizePx, color) {
         var c = document.createElement('canvas');
         var ctx = c.getContext('2d');
@@ -1519,87 +1500,14 @@ function mapUtilsService($q, angularBingMaps) {
         return _isBingMapsLoaded;
     }
 
-    var hasWKTBeenLoaded = false;
-    var isWKTCurrentlyLoading = false;
-    var wktCallbacks = [];
-    function loadWKTModule(callback) {
-        if (hasWKTBeenLoaded) {
-            console.debug('WKT Module already loaded, firing callback');
-            if (callback && typeof callback === 'function') {callback();}
-        } else if (isWKTCurrentlyLoading) {
-            console.debug('WKT Module is currently loading, pushing callback into list');
-            wktCallbacks.push(callback);
-        } else {
-            //Only call this method once to avoid kicking off multiple digest cycles
-            isWKTCurrentlyLoading = true;
-            wktCallbacks.push(callback);
-            console.debug('WKT Module not loaded, calling Microsoft.Maps.loadModule');
-            Microsoft.Maps.loadModule(['Microsoft.Maps.WellKnownText', 'Microsoft.Maps.AdvancedShapes'], function() {
-                console.debug('Ok, WKT Module loaded now. Firing callbacks...');
-                for(var i=0;i<wktCallbacks.length;i++) {
-                    var cb = wktCallbacks[i];
-                    console.debug('Firing WKT callback number ' + i);
-                    if (cb && typeof cb === 'function') {cb();}
-                }
-            });
-        }
-    }
-
-    var hasGeoJsonBeenLoaded = false;
-    var isGeoJsonCurrentlyLoading = false;
-    var geoJsonCallbacks = [];
-    function loadGeoJsonModule(callback) {
-        if (hasGeoJsonBeenLoaded) {
-            if (callback && typeof callback === 'function') {callback();}
-        } else if (isGeoJsonCurrentlyLoading) {
-            geoJsonCallbacks.push(callback);
-        } else {
-            //Only call this method once to avoid kicking off multiple digest cycles
-            isGeoJsonCurrentlyLoading = true;
-            geoJsonCallbacks.push(callback);
-            Microsoft.Maps.loadModule(['Microsoft.Maps.GeoJson', 'Microsoft.Maps.AdvancedShapes'], function() {
-                for(var i=0;i<geoJsonCallbacks.length;i++) {
-                    var cb = geoJsonCallbacks[i];
-                    if (cb && typeof cb === 'function') {cb();}
-                }
-            });
-        }
-    }
-
-    var hasDrawingToolsBeenLoaded = false;
-    var isDrawingToolsCurrentlyLoading = false;
-    var drawingToolsCallbacks = [];
-    function loadDrawingToolsModule(callback) {
-        if (hasDrawingToolsBeenLoaded) {
-            if (callback && typeof callback === 'function') {callback();}
-        } else if (isDrawingToolsCurrentlyLoading) {
-            drawingToolsCallbacks.push(callback);
-        } else {
-            //Only call this method once to avoid kicking off multiple digest cycles
-            isDrawingToolsCurrentlyLoading = true;
-            drawingToolsCallbacks.push(callback);
-            Microsoft.Maps.loadModule(['Microsoft.Maps.DrawingTools', 'Microsoft.Maps.SpatialMath'], function() {
-                for(var i=0;i<drawingToolsCallbacks.length;i++) {
-                    var cb = drawingToolsCallbacks[i];
-                    if (cb && typeof cb === 'function') {cb();}
-                }
-            });
-        }
-    }
-
-
     return {
         makeMicrosoftColor: makeMicrosoftColor,
         makeMicrosoftLatLng: makeMicrosoftLatLng,
         convertToMicrosoftLatLngs: convertToMicrosoftLatLngs,
         flattenEntityCollection: flattenEntityCollection,
-        loadAdvancedShapesModule: loadAdvancedShapesModule,
         createFontPushpin: createFontPushpin,
         onBingMapsReady: onBingMapsReady,
         isBingMapsLoaded: isBingMapsLoaded,
-        loadWKTModule: loadWKTModule,
-        loadGeoJsonModule: loadGeoJsonModule,
-        loadDrawingToolsModule: loadDrawingToolsModule,
         _executeOnBingMapsReadyCallbacks: _executeOnBingMapsReadyCallbacks
     };
 

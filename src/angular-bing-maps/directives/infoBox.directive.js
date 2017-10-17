@@ -1,12 +1,12 @@
 /*global angular, Microsoft, DrawingTools, console*/
 
-function infoBoxDirective() {
+function infoBoxDirective(MapUtils) {
     'use strict';
 
     function link(scope, element, attrs, ctrls) {
         var mapCtrl = ctrls[0];
         var pushpinCtrl = ctrls[1];
-        mapCtrl.onBingMapsReady(function() {
+        MapUtils.onBingMapsReady(function() {
 
             var infobox = new Microsoft.Maps.Infobox(new Microsoft.Maps.Location(0.0 , 0.0));
 

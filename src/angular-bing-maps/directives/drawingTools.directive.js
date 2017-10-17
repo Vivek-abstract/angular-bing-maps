@@ -4,9 +4,7 @@ function drawingToolsDirective(MapUtils) {
     'use strict';
 
     function link(scope, element, attrs, mapCtrl) {
-        mapCtrl.onBingMapsReady(function() {
-
-            MapUtils.loadDrawingToolsModule(init);
+        MapUtils.onBingMapsReady(function() {
 
             var map;
             var tools;
@@ -22,38 +20,36 @@ function drawingToolsDirective(MapUtils) {
                 strokeThickness: 3
             };
 
-            function init() {
-                map = mapCtrl.map;
+            map = mapCtrl.map;
 
-                // Create a layer for the drawn shapes.
-                drawingLayer = new Microsoft.Maps.Layer();
-                map.layers.insert(drawingLayer);
+            // Create a layer for the drawn shapes.
+            drawingLayer = new Microsoft.Maps.Layer();
+            map.layers.insert(drawingLayer);
 
-                tools = new Microsoft.Maps.DrawingTools(map);
+            tools = new Microsoft.Maps.DrawingTools(map);
 
-                setOptions();
+            setOptions();
 
-                if (scope.onShapeChange) {
-                    Microsoft.Maps.Events.addHandler(tools, 'drawingEnded', function(shapes) {
-                        scope.onShapeChange({shapes: shapes});
-                        scope.$apply();
+            if (scope.onShapeChange) {
+                Microsoft.Maps.Events.addHandler(tools, 'drawingEnded', function(shapes) {
+                    scope.onShapeChange({shapes: shapes});
+                    scope.$apply();
 
-                        currentShape = null;
-                    });
-                }
-
-                scope.$watch('drawThisShape', function (shape) {
-                    if (shape === null || shape === 'none') {
-                        resetDrawingState();
-                    } else {
-                        setDrawingMode(shape);
-                    }
-                });
-
-                scope.$on('DRAWINGTOOLS.CLEAR', function() {
-                    drawingLayer.clear();
+                    currentShape = null;
                 });
             }
+
+            scope.$watch('drawThisShape', function (shape) {
+                if (shape === null || shape === 'none') {
+                    resetDrawingState();
+                } else {
+                    setDrawingMode(shape);
+                }
+            });
+
+            scope.$on('DRAWINGTOOLS.CLEAR', function() {
+                drawingLayer.clear();
+            });
 
             function setOptions() {
                 if (scope.strokeColor) {

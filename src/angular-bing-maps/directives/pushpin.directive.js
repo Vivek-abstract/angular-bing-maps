@@ -6,7 +6,7 @@ function pushpinDirective(MapUtils) {
     function link(scope, element, attrs, ctrls) {
         var pushpinCtrl = ctrls[0];
         var mapCtrl = ctrls[1];
-        mapCtrl.onBingMapsReady(function() {
+        MapUtils.onBingMapsReady(function() {
 
             pushpinCtrl.pin = new Microsoft.Maps.Pushpin(new Microsoft.Maps.Location(0.0, 0.0));
             scope.pin = pushpinCtrl.pin;
@@ -70,16 +70,12 @@ function pushpinDirective(MapUtils) {
                 });
             }
 
-            updatePosition();
-            updateEvents(scope.events);
-            updatePinData(scope.pushpinData);
             mapCtrl.map.entities.push(scope.pin);
 
             scope.$watch('lat', updatePosition);
             scope.$watch('lng', updatePosition);
 
             scope.$watch('options', updatePinOptions);
-            updateFontIcon();
 
             scope.$watch('pushpinData', function(newPushpinData) {
                 updatePinData(newPushpinData);

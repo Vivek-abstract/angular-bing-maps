@@ -66,18 +66,6 @@ function mapUtilsService($q, angularBingMaps) {
         return flat;
     }
 
-    function loadAdvancedShapesModule() {
-        var defered = $q.defer();
-        if(!advancedShapesLoaded) {
-            Microsoft.Maps.loadModule('Microsoft.Maps.AdvancedShapes', { callback: function(){
-                defered.resolve();
-            }});
-        } else {
-            defered.resolve();
-        }
-        return defered.promise;
-    }
-
     function createFontPushpin(text, fontSizePx, color) {
         var c = document.createElement('canvas');
         var ctx = c.getContext('2d');
@@ -130,87 +118,14 @@ function mapUtilsService($q, angularBingMaps) {
         return _isBingMapsLoaded;
     }
 
-    var hasWKTBeenLoaded = false;
-    var isWKTCurrentlyLoading = false;
-    var wktCallbacks = [];
-    function loadWKTModule(callback) {
-        if (hasWKTBeenLoaded) {
-            console.debug('WKT Module already loaded, firing callback');
-            if (callback && typeof callback === 'function') {callback();}
-        } else if (isWKTCurrentlyLoading) {
-            console.debug('WKT Module is currently loading, pushing callback into list');
-            wktCallbacks.push(callback);
-        } else {
-            //Only call this method once to avoid kicking off multiple digest cycles
-            isWKTCurrentlyLoading = true;
-            wktCallbacks.push(callback);
-            console.debug('WKT Module not loaded, calling Microsoft.Maps.loadModule');
-            Microsoft.Maps.loadModule(['Microsoft.Maps.WellKnownText', 'Microsoft.Maps.AdvancedShapes'], function() {
-                console.debug('Ok, WKT Module loaded now. Firing callbacks...');
-                for(var i=0;i<wktCallbacks.length;i++) {
-                    var cb = wktCallbacks[i];
-                    console.debug('Firing WKT callback number ' + i);
-                    if (cb && typeof cb === 'function') {cb();}
-                }
-            });
-        }
-    }
-
-    var hasGeoJsonBeenLoaded = false;
-    var isGeoJsonCurrentlyLoading = false;
-    var geoJsonCallbacks = [];
-    function loadGeoJsonModule(callback) {
-        if (hasGeoJsonBeenLoaded) {
-            if (callback && typeof callback === 'function') {callback();}
-        } else if (isGeoJsonCurrentlyLoading) {
-            geoJsonCallbacks.push(callback);
-        } else {
-            //Only call this method once to avoid kicking off multiple digest cycles
-            isGeoJsonCurrentlyLoading = true;
-            geoJsonCallbacks.push(callback);
-            Microsoft.Maps.loadModule(['Microsoft.Maps.GeoJson', 'Microsoft.Maps.AdvancedShapes'], function() {
-                for(var i=0;i<geoJsonCallbacks.length;i++) {
-                    var cb = geoJsonCallbacks[i];
-                    if (cb && typeof cb === 'function') {cb();}
-                }
-            });
-        }
-    }
-
-    var hasDrawingToolsBeenLoaded = false;
-    var isDrawingToolsCurrentlyLoading = false;
-    var drawingToolsCallbacks = [];
-    function loadDrawingToolsModule(callback) {
-        if (hasDrawingToolsBeenLoaded) {
-            if (callback && typeof callback === 'function') {callback();}
-        } else if (isDrawingToolsCurrentlyLoading) {
-            drawingToolsCallbacks.push(callback);
-        } else {
-            //Only call this method once to avoid kicking off multiple digest cycles
-            isDrawingToolsCurrentlyLoading = true;
-            drawingToolsCallbacks.push(callback);
-            Microsoft.Maps.loadModule(['Microsoft.Maps.DrawingTools', 'Microsoft.Maps.SpatialMath'], function() {
-                for(var i=0;i<drawingToolsCallbacks.length;i++) {
-                    var cb = drawingToolsCallbacks[i];
-                    if (cb && typeof cb === 'function') {cb();}
-                }
-            });
-        }
-    }
-
-
     return {
         makeMicrosoftColor: makeMicrosoftColor,
         makeMicrosoftLatLng: makeMicrosoftLatLng,
         convertToMicrosoftLatLngs: convertToMicrosoftLatLngs,
         flattenEntityCollection: flattenEntityCollection,
-        loadAdvancedShapesModule: loadAdvancedShapesModule,
         createFontPushpin: createFontPushpin,
         onBingMapsReady: onBingMapsReady,
         isBingMapsLoaded: isBingMapsLoaded,
-        loadWKTModule: loadWKTModule,
-        loadGeoJsonModule: loadGeoJsonModule,
-        loadDrawingToolsModule: loadDrawingToolsModule,
         _executeOnBingMapsReadyCallbacks: _executeOnBingMapsReadyCallbacks
     };
 

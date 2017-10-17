@@ -4,28 +4,24 @@ function geoJsonDirective(MapUtils) {
     'use strict';
 
     function link(scope, element, attrs, mapCtrl) {
-        mapCtrl.onBingMapsReady(function() {
-
-            MapUtils.loadGeoJsonModule(init);
+        MapUtils.onBingMapsReady(function() {
 
             var map;
             var drawingLayer;
 
-            function init() {
-                map = mapCtrl.map;
-                drawingLayer = new Microsoft.Maps.Layer();
-                map.layers.insert(drawingLayer);
+            map = mapCtrl.map;
+            drawingLayer = new Microsoft.Maps.Layer();
+            map.layers.insert(drawingLayer);
 
+            processGeoJson(scope.model);
+
+            scope.$watch('model', function () {
                 processGeoJson(scope.model);
+            });
 
-                scope.$watch('model', function () {
-                    processGeoJson(scope.model);
-                });
-
-                scope.$on('$destroy', function() {
-                    map.layers.remove(drawingLayer);
-                });
-            }
+            scope.$on('$destroy', function() {
+                map.layers.remove(drawingLayer);
+            });
 
             function processGeoJson(model) {
                 if (model) {

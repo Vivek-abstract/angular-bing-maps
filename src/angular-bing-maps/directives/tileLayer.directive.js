@@ -1,11 +1,11 @@
 /*global angular, Microsoft, DrawingTools, console*/
 
-function tileLayerDirective() {
+function tileLayerDirective(MapUtils) {
     'use strict';
 
     function link(scope, element, attrs, mapCtrl) {
 
-        mapCtrl.onBingMapsReady(function() {
+        MapUtils.onBingMapsReady(function() {
             var tileSource, tileLayer;
 
             function createTileSource() {
@@ -52,8 +52,6 @@ function tileLayerDirective() {
             scope.$on('$destroy', function() {
                 mapCtrl.map.layers.remove(tileLayer);
             });
-
-            createTileSource();
 
         });
 
