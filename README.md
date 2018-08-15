@@ -45,7 +45,7 @@ To begin contributing to angular-bing-maps:
  1. Fork it
  2. Clone your fork
  3. Checkout the "develop" branch
-   * `git checkout devlop`
+   * `git checkout develop`
  4. Create a new feature branch for your changes off the develop branch
    * `git branch my-super-cool-feature`
  5. Install NodeJS developer dependencies
